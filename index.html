@@ -17,25 +17,35 @@
         .modal { transition: opacity 0.25s ease; }
         .modal-content { transition: transform 0.25s ease; }
         .status-badge, .abc-badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-        #operator-login-screen { background: linear-gradient(135deg, #4f46e5, #818cf8); }
+        #login-screen { background: linear-gradient(135deg, #4f46e5, #818cf8); }
         .bar-chart-bar { transition: width 0.5s ease-in-out; }
+        /* Adiciona estilo para botões desativados */
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- Ecrã de Seleção de Operador (Login) -->
-    <div id="operator-login-screen" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md text-center">
+    <!-- Ecrã de Login Seguro -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-sm text-center">
             <i class="fa-solid fa-warehouse text-5xl text-indigo-600 mb-4"></i>
             <h1 class="text-3xl font-bold mb-2">Sistema WMS</h1>
-            <p class="text-gray-600 mb-6">Selecione o seu utilizador para iniciar</p>
-            <div id="operator-list" class="space-y-3 mb-6 max-h-60 overflow-y-auto">
-                <p>A carregar operadores...</p>
-            </div>
-            <div class="text-sm">
-                <span>Não está na lista?</span>
-                <a href="#" id="add-operator-link" class="text-indigo-600 hover:underline font-semibold">Adicione um novo</a>
-            </div>
+            <p class="text-gray-600 mb-6">Insira as suas credenciais para aceder</p>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="email" class="sr-only">Email</label>
+                    <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded-lg text-center" required>
+                </div>
+                <div>
+                    <label for="password" class="sr-only">Password</label>
+                    <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded-lg text-center" required>
+                </div>
+                <button type="submit" id="login-btn" class="w-full bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition font-semibold">Entrar</button>
+            </form>
+             <p id="login-error" class="text-red-500 text-sm mt-4 h-5"></p>
         </div>
     </div>
 
@@ -44,19 +54,21 @@
         <!-- Sidebar de Navegação -->
         <aside class="w-20 bg-gray-800 text-white p-4 flex flex-col items-center space-y-8 shadow-lg">
             <div class="text-indigo-400"> <i class="fa-solid fa-warehouse fa-2x"></i> </div>
-            <nav class="flex flex-col space-y-8">
-                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('dashboard')" title="Dashboard"><i class="fa-solid fa-chart-pie fa-2x"></i></a>
-                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('tasks')" title="Minhas Tarefas"><i class="fa-solid fa-list-check fa-2x"></i></a>
-                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('inbound')" title="Recebimento (Inbound)"><i class="fa-solid fa-dolly fa-2x"></i></a>
-                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('inventory')" title="Gestão de Inventário"><i class="fa-solid fa-boxes-stacked fa-2x"></i></a>
-                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('outbound')" title="Expedição (Outbound)"><i class="fa-solid fa-truck-fast fa-2x"></i></a>
-                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('tms')" title="Transporte (TMS)"><i class="fa-solid fa-route fa-2x"></i></a>
-                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('reports')" title="Relatórios"><i class="fa-solid fa-file-signature fa-2x"></i></a>
+            <nav id="sidebar-nav" class="flex flex-col space-y-8">
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link" data-view="dashboard" onclick="showView('dashboard')" title="Dashboard"><i class="fa-solid fa-chart-pie fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link" data-view="tasks" onclick="showView('tasks')" title="Minhas Tarefas"><i class="fa-solid fa-list-check fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link" data-view="inbound" onclick="showView('inbound')" title="Recebimento (Inbound)"><i class="fa-solid fa-dolly fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link" data-view="inventory" onclick="showView('inventory')" title="Gestão de Inventário"><i class="fa-solid fa-boxes-stacked fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link" data-view="outbound" onclick="showView('outbound')" title="Expedição (Outbound)"><i class="fa-solid fa-truck-fast fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link role-gestor" data-view="tms" onclick="showView('tms')" title="Transporte (TMS)"><i class="fa-solid fa-route fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link role-gestor" data-view="reports" onclick="showView('reports')" title="Relatórios"><i class="fa-solid fa-file-signature fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400 nav-link role-gestor" data-view="management" onclick="showView('management')" title="Gestão de Utilizadores"><i class="fa-solid fa-users-cog fa-2x"></i></a>
             </nav>
             <div class="mt-auto flex flex-col items-center text-center">
-                 <img id="user-avatar" src="https://placehold.co/40x40/E2E8F0/4A5568?text=U" class="rounded-full mb-2">
-                 <span id="operator-name" class="text-xs font-medium"></span>
-                 <button id="logout-btn" class="text-xs text-gray-400 hover:text-white">Sair</button>
+                <img id="user-avatar" src="https://placehold.co/40x40/E2E8F0/4A5568?text=U" class="rounded-full mb-2">
+                <span id="operator-name" class="text-xs font-medium"></span>
+                <span id="operator-role" class="text-xs text-indigo-300"></span>
+                <button id="logout-btn" class="text-xs text-gray-400 hover:text-white mt-1">Sair</button>
             </div>
         </aside>
 
@@ -131,7 +143,7 @@
                                 <label for="supplier" class="block text-sm font-medium text-gray-700">Fornecedor</label>
                                 <input type="text" id="supplier" class="w-full p-2 border rounded mt-1" required>
                             </div>
-                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition disabled:opacity-50">Criar Ordem de Recebimento</button>
+                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition">Criar Ordem de Recebimento</button>
                         </form>
                     </div>
                     <div class="bg-white p-6 rounded-lg shadow-md">
@@ -149,7 +161,7 @@
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold">Stock Atual</h2>
-                        <div>
+                        <div id="inventory-management-buttons">
                             <button id="create-cycle-count-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition mr-2">Criar Contagem Cíclica</button>
                             <button id="add-product-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Adicionar Novo Produto</button>
                         </div>
@@ -159,7 +171,7 @@
                             <thead class="bg-gray-200 sticky top-0">
                                 <tr>
                                     <th class="p-3">SKU</th><th class="p-3">Produto</th><th class="p-3">Giro</th>
-                                    <th class="p-3 text-right">Quantidade</th><th class="p-3">Localização</th><th class="p-3">Ações</th>
+                                    <th class="p-3 text-right">Quantidade</th><th class="p-3">Localização</th><th class="p-3" id="inventory-actions-header">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="inventory-table-body"></tbody>
@@ -185,7 +197,7 @@
                                 <label for="customer-name" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
                                 <input type="text" id="customer-name" class="w-full p-2 border rounded mt-1" required>
                             </div>
-                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition disabled:opacity-50">Criar Pedido de Venda</button>
+                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition">Criar Pedido de Venda</button>
                         </form>
                     </div>
                     <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
@@ -237,6 +249,44 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Management View (Gestores) -->
+            <div id="management-view" class="view hidden">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">Gestão de Utilizadores</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Adicionar Novo Utilizador</h2>
+                        <form id="create-operator-form" class="space-y-4">
+                            <div>
+                                <label for="operator-new-name" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                                <input type="text" id="operator-new-name" class="w-full p-2 border rounded mt-1" required>
+                            </div>
+                             <div>
+                                <label for="operator-new-email" class="block text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" id="operator-new-email" class="w-full p-2 border rounded mt-1" required>
+                            </div>
+                            <div>
+                                <label for="operator-new-password" class="block text-sm font-medium text-gray-700">Password</label>
+                                <input type="password" id="operator-new-password" class="w-full p-2 border rounded mt-1" required>
+                            </div>
+                            <div>
+                                <label for="operator-new-role" class="block text-sm font-medium text-gray-700">Perfil</label>
+                                <select id="operator-new-role" class="w-full p-2 border rounded mt-1">
+                                    <option value="Operador">Operador</option>
+                                    <option value="Gestor">Gestor</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition">Adicionar Utilizador</button>
+                        </form>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Utilizadores Registados</h2>
+                        <div id="management-operator-list" class="space-y-3 max-h-96 overflow-y-auto">
+                            <p class="text-gray-500">A carregar utilizadores...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -252,7 +302,7 @@
             </div>
             <div id="modal-footer" class="p-4 bg-gray-50 border-t text-right space-x-2">
                 <button id="modal-cancel-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Cancelar</button>
-                <button id="modal-confirm-btn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait">Confirmar</button>
+                <button id="modal-confirm-btn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Confirmar</button>
             </div>
         </div>
     </div>
@@ -285,94 +335,88 @@
         const cycleCountTasksCol = collection(db, 'cycleCountTasks');
         const inventoryStatsRef = doc(db, 'stats', 'inventory');
 
-        // --- GLOBAL STATE ---
-        let currentOperator = null;
+        let currentUser = null;
         let confirmCallback = null;
         let activeListeners = [];
-        let cachedSalesOrders = [];
-        let cachedCycleCountTasks = [];
 
+        // --- AUTH & LOGIN MANAGEMENT ---
 
-        // --- OPERATOR & LOGIN MANAGEMENT ---
-        async function loadOperators() {
-            const operatorListDiv = document.getElementById('operator-list');
-            const q = query(operatorsCol, orderBy('name'));
+        document.getElementById('login-form').addEventListener('submit', handleLogin);
+        document.getElementById('logout-btn').addEventListener('click', logout);
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('login-btn');
+            const errorP = document.getElementById('login-error');
             
-            onSnapshot(q, 
-                (snapshot) => {
-                    if (snapshot.empty) {
-                        operatorListDiv.innerHTML = '<p class="text-gray-500">Nenhum operador registado.</p>';
-                    } else {
-                        operatorListDiv.innerHTML = snapshot.docs.map(doc => {
-                            const operator = doc.data();
-                            return `<button data-id="${doc.id}" data-name="${operator.name}" class="operator-btn w-full text-left p-3 bg-gray-100 hover:bg-indigo-100 rounded-lg transition">${operator.name}</button>`;
-                        }).join('');
-                    }
-                }, 
-                (error) => {
-                    console.error("Erro ao carregar a lista de operadores: ", error);
-                    operatorListDiv.innerHTML = '<p class="text-red-500 font-semibold">Ocorreu um erro ao carregar os operadores. Verifique as permissões da base de dados e a consola para mais detalhes.</p>';
-                }
-            );
-        }
+            errorP.textContent = '';
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'A verificar...';
 
-        document.getElementById('operator-list').addEventListener('click', (e) => {
-            if (e.target.classList.contains('operator-btn')) {
-                login({ id: e.target.dataset.id, name: e.target.dataset.name });
-            }
-        });
-        
-        document.getElementById('add-operator-link').addEventListener('click', () => {
-             const modalContent = `
-                <form id="add-operator-form" class="space-y-4">
-                    <div>
-                        <label for="new-operator-name" class="block text-sm font-medium text-gray-700">Nome do Novo Operador</label>
-                        <input type="text" id="new-operator-name" class="w-full p-2 border rounded mt-1" required>
-                    </div>
-                </form>
-            `;
-            openModal('Adicionar Novo Operador', modalContent, handleAddOperator, 'Adicionar');
-        });
+            try {
+                const q = query(operatorsCol, where("email", "==", email));
+                const querySnapshot = await getDocs(q);
 
-        async function handleAddOperator() {
-            const nameInput = document.getElementById('new-operator-name');
-            const name = nameInput.value.trim();
-            if (name) {
-                disableModalConfirmButton('A adicionar...');
-                try {
-                    await addDoc(operatorsCol, { name });
-                    closeModal();
-                } catch (error) {
-                    console.error("Erro ao adicionar operador:", error);
-                    showError('Erro Inesperado', 'Não foi possível adicionar o operador.');
-                } finally {
-                    enableModalConfirmButton('Adicionar');
+                if (querySnapshot.empty) {
+                    throw new Error("Email ou password inválidos.");
                 }
-            } else {
-                 showError('Erro de Validação', 'O nome do operador não pode estar em branco.');
+
+                const userDoc = querySnapshot.docs[0];
+                const userData = userDoc.data();
+
+                if (userData.password !== password) {
+                    throw new Error("Email ou password inválidos.");
+                }
+                
+                currentUser = { id: userDoc.id, ...userData };
+
+                document.getElementById('operator-name').textContent = currentUser.name;
+                document.getElementById('operator-role').textContent = currentUser.role;
+                const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0,2);
+                document.getElementById('user-avatar').src = `https://placehold.co/40x40/E2E8F0/4A5568?text=${initials}`;
+                
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                applyRolePermissions();
+                showView('dashboard');
+                loadAllData();
+
+            } catch (error) {
+                errorP.textContent = error.message;
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Entrar';
             }
         }
         
-        document.getElementById('logout-btn').addEventListener('click', () => {
-             document.getElementById('app-container').classList.add('hidden');
-             document.getElementById('operator-login-screen').classList.remove('hidden');
-             currentOperator = null;
-             // Unsubscribe from all listeners
-             activeListeners.forEach(unsubscribe => unsubscribe());
-             activeListeners = [];
-             cachedSalesOrders = [];
-             cachedCycleCountTasks = [];
-        });
+        function logout() {
+            document.getElementById('app-container').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('login-error').textContent = '';
+            currentUser = null;
+            // Unsubscribe from all listeners
+            activeListeners.forEach(unsubscribe => unsubscribe());
+            activeListeners = [];
+        }
 
-        function login(operator) {
-            currentOperator = operator;
-            document.getElementById('operator-name').textContent = operator.name;
-            const initials = operator.name.split(' ').map(n => n[0]).join('').substring(0,2);
-            document.getElementById('user-avatar').src = `https://placehold.co/40x40/E2E8F0/4A5568?text=${initials}`;
-            document.getElementById('operator-login-screen').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            showView('dashboard');
-            loadAllData();
+        function applyRolePermissions() {
+            const isGestor = currentUser.role === 'Gestor';
+            
+            // Oculta/mostra links da barra lateral
+            document.querySelectorAll('.nav-link.role-gestor').forEach(el => {
+                el.style.display = isGestor ? 'block' : 'none';
+            });
+
+            // Oculta/mostra botões de gestão de inventário
+            const inventoryButtons = document.getElementById('inventory-management-buttons');
+            const inventoryActionsHeader = document.getElementById('inventory-actions-header');
+            if (inventoryButtons) inventoryButtons.style.display = isGestor ? 'block' : 'none';
+            if (inventoryActionsHeader) inventoryActionsHeader.style.display = isGestor ? 'table-cell' : 'none';
         }
 
         // --- VIEW & DATA MANAGEMENT ---
@@ -380,72 +424,50 @@
             document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
             document.getElementById(`${viewId}-view`).classList.remove('hidden');
             if (viewId === 'reports') generateReports();
+            if (viewId === 'management') loadOperatorsForManagement();
         };
         
         function loadAllData() {
-            if (!currentOperator) return;
+            if (!currentUser) return;
 
-            // Clear previous listeners to avoid duplicates
             activeListeners.forEach(unsubscribe => unsubscribe());
             activeListeners = [];
             
-            // Carrega os dados uma vez para evitar piscar de ecrã
-            getDocs(cycleCountTasksCol).then(snapshot => {
-                cachedCycleCountTasks = snapshot.docs;
-            });
-
             const listeners = [
                 onSnapshot(inventoryCol, snapshot => {
-                    document.getElementById('kpi-total-skus').textContent = snapshot.size;
-                    // Ordenação movida para o lado do cliente para evitar a necessidade de índices
-                    const sortedDocs = [...snapshot.docs].sort((a, b) => {
-                        const skuA = a.data().sku || '';
-                        const skuB = b.data().sku || '';
-                        return skuA.localeCompare(skuB);
-                    });
+                    const sortedDocs = [...snapshot.docs].sort((a, b) => (a.data().sku || '').localeCompare(b.data().sku || ''));
                     updateInventoryTable(sortedDocs);
+                    document.getElementById('kpi-total-skus').textContent = snapshot.size;
                 }),
                 onSnapshot(query(purchaseOrdersCol, orderBy("createdAt", "desc")), snapshot => updatePendingAsnList(snapshot.docs)),
-                onSnapshot(query(salesOrdersCol, orderBy("createdAt", "desc")), async snapshot => {
-                    const salesOrders = snapshot.docs;
-                    cachedSalesOrders = salesOrders; // Cache for use by other listeners
-                    updatePendingOrdersList(salesOrders);
-                    updateDashboardPickingList(salesOrders);
-                    updateMyTasks(salesOrders, cachedCycleCountTasks);
-                    
-                    const shippedOrders = salesOrders.filter(d => d.data().status === 'Expedido');
-                    updateTmsHistory(shippedOrders);
-                    updateAverageShippingCostKpi(shippedOrders);
-                    
-                    const pendingOrdersCount = salesOrders.length - shippedOrders.length;
-                    document.getElementById('kpi-pending-orders').textContent = pendingOrdersCount;
+                onSnapshot(query(salesOrdersCol, orderBy("createdAt", "desc")), snapshot => {
+                    updatePendingOrdersList(snapshot.docs);
+                    updateDashboardPickingList(snapshot.docs);
                 }),
-
-                // Cycle Count & Tasks
-                onSnapshot(query(cycleCountTasksCol, orderBy("createdAt", "desc")), snapshot => {
-                    const cycleTasks = snapshot.docs;
-                    cachedCycleCountTasks = cycleTasks; // Cache for use by other listeners
-                    updateCycleCountTasksList(cycleTasks);
-                    updateMyTasks(cachedSalesOrders, cycleTasks);
+                onSnapshot(query(cycleCountTasksCol, where('assignedToId', '==', currentUser.id), where('status', '==', 'Atribuída')), snapshot => {
+                    const countTasks = snapshot.docs;
+                    const salesQuery = query(salesOrdersCol, where("assignedTo", "==", currentUser.id), where("status", "in", ["Em Separação", "Embalado"]));
+                    onSnapshot(salesQuery, salesSnapshot => {
+                         updateMyTasks(salesSnapshot.docs, countTasks);
+                    });
                 }),
-                
-                // Activity & Performance
                 onSnapshot(query(activityLogCol, orderBy("timestamp", "desc"), limit(10)), snapshot => updateActivityLog(snapshot.docs)),
+                onSnapshot(query(salesOrdersCol, where("status", "!=", "Expedido")), snapshot => { document.getElementById('kpi-pending-orders').textContent = snapshot.size; }),
                 onSnapshot(performanceLogCol, snapshot => updateAvgPickingTime(snapshot.docs)),
                 onSnapshot(inventoryStatsRef, (doc) => updateInventoryAccuracyKpi(doc.data())),
+                onSnapshot(query(cycleCountTasksCol, orderBy("createdAt", "desc")), snapshot => updateCycleCountTasksList(snapshot.docs)),
+                onSnapshot(query(salesOrdersCol, where("status", "==", "Expedido"), orderBy("shippedAt", "desc")), snapshot => {
+                    updateTmsHistory(snapshot.docs);
+                    updateAverageShippingCostKpi(snapshot.docs);
+                })
             ];
-            
             activeListeners.push(...listeners);
         }
 
         async function logActivity(message, details = {}) {
-            try {
-                await addDoc(activityLogCol, { message, operator: currentOperator.name, details, timestamp: serverTimestamp() });
-            } catch (error) {
-                console.error("Falha ao registar atividade:", error);
-            }
+             await addDoc(activityLogCol, { message, operator: currentUser.name, details, timestamp: serverTimestamp() });
         }
-
+        
         // --- DASHBOARD ---
         function updateActivityLog(docs) {
             const logDiv = document.getElementById('activity-log');
@@ -495,6 +517,7 @@
 
         function updateInventoryTable(docs) {
             const tableBody = document.getElementById('inventory-table-body');
+            const isGestor = currentUser.role === 'Gestor';
             if(docs.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-500">O inventário está vazio.</td></tr>`;
                 return;
@@ -502,15 +525,19 @@
             tableBody.innerHTML = docs.map(doc => {
                 const item = doc.data();
                 const abc = getAbcClass(item.salesCount || 0);
+                const actionsCell = isGestor ? `<td class="p-3"><button onclick="window.deleteProduct('${doc.id}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>` : '';
                 return `<tr class="border-b hover:bg-gray-50">
-                    <td class="p-3 font-mono text-sm">${item.sku}</td>
-                    <td class="p-3 font-medium">${item.name}</td>
-                    <td class="p-3"><span class="abc-badge ${abc.color}">${abc.class}</span></td>
-                    <td class="p-3 text-right font-bold">${item.quantity}</td>
-                    <td class="p-3 font-mono text-sm">${item.location}</td>
-                    <td class="p-3"><button onclick="window.deleteProduct('${doc.id}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
-                </tr>`;
+                        <td class="p-3 font-mono text-sm">${item.sku}</td>
+                        <td class="p-3 font-medium">${item.name}</td>
+                        <td class="p-3"><span class="abc-badge ${abc.color}">${abc.class}</span></td>
+                        <td class="p-3 text-right font-bold">${item.quantity}</td>
+                        <td class="p-3 font-mono text-sm">${item.location}</td>
+                        ${actionsCell}
+                    </tr>`;
             }).join('');
+            
+            // É preciso chamar esta função de novo para garantir que a coluna de ações fica visível/oculta
+            applyRolePermissions();
         }
         
         document.getElementById('add-product-btn').addEventListener('click', () => {
@@ -527,18 +554,13 @@
         });
 
         async function handleAddProduct() {
-            disableModalConfirmButton('A adicionar...');
             try {
                 const sku = document.getElementById('product-sku').value.trim().toUpperCase();
-                if(!sku) {
-                    showError("Erro de Validação", "O campo SKU é obrigatório.");
-                    return;
-                }
+                if(!sku) return;
                 const docRef = doc(db, 'inventory', sku);
                 const docSnap = await getDoc(docRef);
                 if(docSnap.exists()) {
-                    showError("Erro de Duplicação", "Já existe um produto com este SKU.");
-                    return;
+                    throw new Error("Já existe um produto com este SKU.");
                 }
                 await setDoc(docRef, {
                     sku,
@@ -549,56 +571,41 @@
                     volume: parseFloat(document.getElementById('product-volume').value),
                     salesCount: 0
                 });
-                await logActivity(`Novo produto adicionado: ${sku}`);
+                logActivity(`Novo produto adicionado: ${sku}`);
                 closeModal();
             } catch (error) {
-                console.error("Erro ao adicionar produto:", error);
-                showError("Erro Inesperado", "Não foi possível adicionar o produto. Verifique a consola para mais detalhes.");
-            } finally {
-                enableModalConfirmButton('Adicionar');
+                showError("Erro ao Adicionar Produto", error.message);
             }
         }
 
-        window.deleteProduct = (docId) => {
-            openModal(`Apagar Produto ${docId}`, `<p>Tem a certeza que deseja apagar este produto do inventário? Esta ação não pode ser desfeita.</p>`, async () => {
-                disableModalConfirmButton('A apagar...');
-                try {
+        window.deleteProduct = async (docId) => {
+             openModal(`Apagar Produto ${docId}`, `<p>Tem a certeza que deseja apagar este produto do inventário? Esta ação não pode ser desfeita.</p>`, async () => {
+                 try {
                     await deleteDoc(doc(db, 'inventory', docId));
-                    await logActivity(`Produto removido: ${docId}`);
+                    logActivity(`Produto removido: ${docId}`);
                     closeModal();
-                } catch (error) {
-                    console.error("Erro ao apagar produto:", error);
-                    showError("Erro Inesperado", "Não foi possível apagar o produto.");
-                } finally {
-                    enableModalConfirmButton('Apagar');
-                }
-            }, 'Apagar');
+                 } catch (error) {
+                    showError("Erro ao Apagar", "Não foi possível apagar o produto.");
+                 }
+             }, 'Apagar', true);
         };
 
         // --- INBOUND (RECEIVING) ---
         document.getElementById('receive-form').addEventListener('submit', async e => {
             e.preventDefault();
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>A criar...';
-
+            const form = e.target;
+            const asnId = document.getElementById('asn-id').value;
+            const supplier = document.getElementById('supplier').value;
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
             try {
-                const asnId = document.getElementById('asn-id').value;
-                const supplier = document.getElementById('supplier').value;
-                if (!asnId || !supplier) {
-                    showError("Erro de Validação", "Todos os campos são obrigatórios.");
-                    return;
-                }
                 await addDoc(purchaseOrdersCol, { asnId, supplier, status: 'Pendente', createdAt: serverTimestamp(), items: [] });
-                await logActivity(`Ordem de recebimento ${asnId} criada.`);
-                e.target.reset();
-            } catch (error) {
-                console.error("Erro ao criar ordem de recebimento:", error);
-                showError('Erro Inesperado', 'Não foi possível criar a ordem de recebimento.');
+                logActivity(`Ordem de recebimento ${asnId} criada.`);
+                form.reset();
+            } catch(error) {
+                showError("Erro", "Não foi possível criar a ordem de recebimento.");
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnText;
+                button.disabled = false;
             }
         });
 
@@ -612,32 +619,22 @@
             listDiv.innerHTML = pending.map(doc => {
                 const po = doc.data();
                 return `<div class="bg-gray-50 p-3 rounded-lg">
-                    <p class="font-bold">${po.asnId} <span class="text-xs font-normal text-gray-500">- ${po.supplier}</span></p>
-                    <p class="text-xs">Itens: ${po.items.length}</p>
-                    <div class="mt-2">
-                        <button onclick="window.addAsnItem('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Adicionar Item</button>
-                        <button onclick="window.startPutaway('${doc.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600 ${po.items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${po.items.length === 0 ? 'disabled' : ''}>Iniciar Arrumação</button>
-                    </div>
-                </div>`;
+                        <p class="font-bold">${po.asnId} <span class="text-xs font-normal text-gray-500">- ${po.supplier}</span></p>
+                        <p class="text-xs">Itens: ${po.items.length}</p>
+                        <div class="mt-2">
+                            <button onclick="window.addAsnItem('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Adicionar Item</button>
+                            <button onclick="window.startPutaway('${doc.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600 ${po.items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${po.items.length === 0 ? 'disabled' : ''}>Iniciar Arrumação</button>
+                        </div>
+                    </div>`;
             }).join('');
         }
 
         window.addAsnItem = async (docId) => {
-            showLoadingModal('A carregar lista de produtos...');
+            showLoadingModal("A carregar lista de produtos...");
             try {
-                // Removido orderBy para evitar necessidade de índice; ordenação feita no cliente
                 const allSkusSnapshot = await getDocs(inventoryCol);
-                
-                const productList = allSkusSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
-                productList.sort((a, b) => (a.data.sku || '').localeCompare(b.data.sku || ''));
-                
-                if(productList.length === 0) {
-                    openModal('Aviso', '<p>Não há produtos no inventário. Adicione um produto primeiro.</p>', closeModal, 'Fechar');
-                    return;
-                }
-
-                const options = productList.map(p => `<option value="${p.id}">${p.data.sku} - ${p.data.name}</option>`).join('');
-
+                const sortedDocs = [...allSkusSnapshot.docs].sort((a,b) => (a.data().sku || '').localeCompare(b.data().sku || ''));
+                const options = sortedDocs.map(d => `<option value="${d.id}">${d.id} - ${d.data().name}</option>`).join('');
                 openModal('Adicionar Item ao Recebimento', `
                     <form id="add-asn-item-form" class="space-y-4">
                         <div>
@@ -651,25 +648,18 @@
                     </form>
                 `, () => handleAddAsnItem(docId), 'Adicionar');
             } catch (error) {
-                console.error("Erro ao carregar SKUs:", error);
-                showError("Erro", "Não foi possível carregar a lista de produtos.");
+                 showError("Erro", "Não foi possível carregar a lista de produtos.");
             }
         };
 
         async function handleAddAsnItem(docId) {
-            disableModalConfirmButton('A adicionar...');
             try {
                 const poDoc = await getDoc(doc(db, 'purchaseOrders', docId));
-                if (!poDoc.exists()) {
-                    showError("Erro", "Ordem de recebimento não encontrada.");
-                    return;
-                }
                 const po = poDoc.data();
                 const sku = document.getElementById('asn-item-sku').value;
                 const quantity = parseInt(document.getElementById('asn-item-qty').value, 10);
                 if (isNaN(quantity) || quantity <= 0) {
-                    showError("Erro de Validação", "Por favor, insira uma quantidade válida.");
-                    return;
+                    throw new Error("A quantidade deve ser um número positivo.");
                 }
                 
                 const existingItem = po.items.find(item => item.sku === sku);
@@ -682,20 +672,14 @@
                 await updateDoc(doc(db, 'purchaseOrders', docId), { items: newItems });
                 closeModal();
             } catch (error) {
-                console.error("Erro ao adicionar item ASN:", error);
-                showError("Erro", "Não foi possível adicionar o item à ordem.");
-            } finally {
-                enableModalConfirmButton('Adicionar');
+                showError("Erro ao Adicionar Item", error.message);
             }
         }
 
         window.startPutaway = async (docId) => {
+            showLoadingModal("A gerar lista de arrumação...");
             try {
                 const poDoc = await getDoc(doc(db, 'purchaseOrders', docId));
-                if(!poDoc.exists()) {
-                    showError("Erro", "Ordem de recebimento não encontrada.");
-                    return;
-                }
                 const po = poDoc.data();
                 
                 const putawayListHtml = await Promise.all(po.items.map(async item => {
@@ -717,14 +701,12 @@
                         <tbody>${putawayListHtml.join('')}</tbody>
                     </table>
                 `, () => handleConfirmPutaway(docId, po.items), 'Confirmar e Finalizar');
-            } catch (error) {
-                console.error("Erro ao iniciar arrumação:", error);
+            } catch(error) {
                 showError("Erro", "Não foi possível gerar a lista de arrumação.");
             }
         };
 
         async function handleConfirmPutaway(docId, items) {
-            disableModalConfirmButton('A finalizar...');
             try {
                 const poRef = doc(db, 'purchaseOrders', docId);
                 await runTransaction(db, async (transaction) => {
@@ -738,30 +720,21 @@
                     }
                     transaction.update(poRef, { status: 'Finalizado' });
                 });
-                await logActivity(`Recebimento ${docId.substring(0,5)}... finalizado e stock atualizado.`);
+                logActivity(`Recebimento ${docId.substring(0,5)}... finalizado e stock atualizado.`);
                 closeModal();
             } catch (error) {
-                console.error("Erro ao confirmar arrumação:", error);
-                showError("Erro de Transação", "Não foi possível finalizar o recebimento. O stock não foi alterado.");
-            } finally {
-                enableModalConfirmButton('Confirmar e Finalizar');
+                showError("Erro na Transação", "Não foi possível confirmar a arrumação. O stock não foi alterado.");
             }
         }
 
         // --- OUTBOUND (SHIPPING) ---
         document.getElementById('order-form').addEventListener('submit', async e => {
             e.preventDefault();
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>A criar...';
-
+            const form = e.target;
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
             try {
                 const customer = document.getElementById('customer-name').value;
-                if (!customer) {
-                    showError("Erro de Validação", "O nome do cliente é obrigatório.");
-                    return;
-                }
                 const orderId = `SO-${Date.now()}`;
                 await addDoc(salesOrdersCol, { 
                     orderId, 
@@ -770,14 +743,12 @@
                     createdAt: serverTimestamp(), 
                     items: [] 
                 });
-                await logActivity(`Pedido ${orderId} criado para ${customer}.`);
-                e.target.reset();
+                logActivity(`Pedido ${orderId} criado para ${customer}.`);
+                form.reset();
             } catch (error) {
-                console.error("Erro ao criar pedido:", error);
-                showError("Erro Inesperado", "Não foi possível criar o pedido de venda.");
+                showError("Erro", "Não foi possível criar o pedido de venda.");
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnText;
+                button.disabled = false;
             }
         });
 
@@ -791,15 +762,13 @@
             listDiv.innerHTML = openOrders.map(doc => {
                  const order = doc.data();
                  const statusColors = {
-                    'Aguardando Separação': 'bg-red-200 text-red-800',
-                    'Em Separação': 'bg-yellow-200 text-yellow-800',
-                    'Embalado': 'bg-blue-200 text-blue-800',
-                    'Aguardando Expedição': 'bg-purple-200 text-purple-800',
+                     'Aguardando Separação': 'bg-red-200 text-red-800', 'Em Separação': 'bg-yellow-200 text-yellow-800',
+                     'Embalado': 'bg-blue-200 text-blue-800', 'Aguardando Expedição': 'bg-purple-200 text-purple-800',
                  };
                  let actionsHtml = '';
                  if (order.status === 'Aguardando Separação') {
-                    actionsHtml = `<button onclick="window.addOrderItem('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Adicionar Item</button>
-                                   <button onclick="window.assignOrderToOperator('${doc.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600 ${order.items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${order.items.length === 0 ? 'disabled' : ''}>Atribuir Operador</button>`;
+                     actionsHtml = `<button onclick="window.addOrderItem('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Adicionar Item</button>
+                                    <button onclick="window.assignOrderToOperator('${doc.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600 ${order.items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${order.items.length === 0 ? 'disabled' : ''}>Atribuir Operador</button>`;
                  }
                  if (order.status === 'Aguardando Expedição') {
                       actionsHtml = `<button onclick="window.openTmsModal('${doc.id}')" class="bg-teal-500 text-white px-2 py-1 text-xs rounded hover:bg-teal-600">Expedir (TMS)</button>`;
@@ -820,20 +789,12 @@
         }
 
         window.addOrderItem = async (orderId) => {
-            showLoadingModal('A carregar lista de produtos...');
+            showLoadingModal("A carregar lista de produtos...");
             try {
-                // Removido orderBy para evitar necessidade de índice; ordenação feita no cliente
                 const allSkusSnapshot = await getDocs(inventoryCol);
-
-                const productList = allSkusSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
-                productList.sort((a, b) => (a.data.sku || '').localeCompare(b.data.sku || ''));
-
-                if(productList.length === 0) {
-                    openModal('Aviso', '<p>Não há produtos no inventário para adicionar.</p>', closeModal, 'Fechar');
-                    return;
-                }
-
-                const options = productList.map(p => `<option value="${p.id}" data-loc="${p.data.location}">${p.id} - ${p.data.name} (Disp: ${p.data.quantity})</option>`).join('');
+                const sortedDocs = [...allSkusSnapshot.docs].sort((a,b) => (a.data().sku || '').localeCompare(b.data().sku || ''));
+                
+                const options = sortedDocs.map(d => `<option value="${d.id}" data-loc="${d.data().location}">${d.id} - ${d.data().name} (Disp: ${d.data().quantity})</option>`).join('');
                 
                 openModal('Adicionar Item ao Pedido', `
                     <form id="add-order-item-form" class="space-y-4">
@@ -841,30 +802,25 @@
                         <div><label>Quantidade</label><input type="number" id="order-item-qty" class="w-full p-2 border rounded" required min="1"></div>
                     </form>
                 `, () => handleAddOrderItem(orderId), 'Adicionar');
-            } catch (error) {
-                console.error("Erro ao carregar SKUs para pedido:", error);
-                showError("Erro", "Não foi possível carregar a lista de produtos.");
+            } catch(error) {
+                 showError("Erro", "Não foi possível carregar a lista de produtos.");
             }
         };
 
         async function handleAddOrderItem(orderId) {
-            disableModalConfirmButton('A adicionar...');
             try {
                 const orderRef = doc(db, 'salesOrders', orderId);
                 const select = document.getElementById('order-item-sku');
                 const sku = select.value;
                 const location = select.options[select.selectedIndex].dataset.loc;
                 const quantity = parseInt(document.getElementById('order-item-qty').value, 10);
-
                 if (isNaN(quantity) || quantity <= 0) {
-                    showError("Erro de Validação", "A quantidade deve ser um número maior que zero.");
-                    return;
+                    throw new Error("A quantidade deve ser um número positivo.");
                 }
                 
                 const invDoc = await getDoc(doc(db, 'inventory', sku));
                 if (!invDoc.exists() || invDoc.data().quantity < quantity) {
-                    showError("Erro de Stock", "Quantidade insuficiente em stock.");
-                    return;
+                    throw new Error("Quantidade insuficiente em stock.");
                 }
 
                 const orderDoc = await getDoc(orderRef);
@@ -879,18 +835,16 @@
                 await updateDoc(orderRef, { items: newItems });
                 closeModal();
             } catch (error) {
-                console.error("Erro ao adicionar item ao pedido:", error);
-                showError("Erro", "Não foi possível adicionar o item ao pedido.");
-            } finally {
-                enableModalConfirmButton('Adicionar');
+                showError("Erro ao Adicionar Item", error.message);
             }
         }
         
         window.assignOrderToOperator = async (orderId) => {
+            showLoadingModal("A carregar operadores...");
             try {
-                const opsSnapshot = await getDocs(operatorsCol);
+                const opsSnapshot = await getDocs(query(operatorsCol, where('role', '==', 'Operador')));
                 if (opsSnapshot.empty) {
-                    showError("Sem Operadores", "Não há operadores registados para atribuir a tarefa.");
+                    showError("Sem Operadores", "Nenhum utilizador com o perfil 'Operador' foi encontrado para atribuir a tarefa.");
                     return;
                 }
                 const options = opsSnapshot.docs.map(d => `<option value="${d.id}" data-name="${d.data().name}">${d.data().name}</option>`).join('');
@@ -899,13 +853,11 @@
                     <select id="operator-select" class="w-full p-2 border rounded mt-2">${options}</select>
                 `, () => handleAssignOrder(orderId), 'Atribuir');
             } catch (error) {
-                console.error("Erro ao carregar operadores:", error);
                 showError("Erro", "Não foi possível carregar a lista de operadores.");
             }
         };
 
         async function handleAssignOrder(orderId) {
-            disableModalConfirmButton('A atribuir...');
             try {
                 const select = document.getElementById('operator-select');
                 const operatorId = select.value;
@@ -915,23 +867,17 @@
                     assignedTo: operatorId,
                     assignedToName: operatorName
                 });
-                await logActivity(`Pedido ${orderId.substring(0,5)}... atribuído a ${operatorName}.`);
+                logActivity(`Pedido ${orderId.substring(0,5)}... atribuído a ${operatorName}.`);
                 closeModal();
             } catch (error) {
-                console.error("Erro ao atribuir pedido:", error);
-                showError("Erro", "Não foi possível atribuir o pedido.");
-            } finally {
-                enableModalConfirmButton('Atribuir');
+                showError("Erro ao Atribuir", "Não foi possível atribuir o pedido.");
             }
         }
         
         window.startPickingTask = async (orderId) => {
             try {
+                const startTime = Date.now();
                 const orderDoc = await getDoc(doc(db, 'salesOrders', orderId));
-                if (!orderDoc.exists()) {
-                    showError("Erro", "Pedido não encontrado.");
-                    return;
-                }
                 const order = orderDoc.data();
                 const sortedItems = [...order.items].sort((a,b) => a.location.localeCompare(b.location));
                 
@@ -946,45 +892,37 @@
                 openModal(`Lista de Separação - ${order.orderId}`, `
                     <p class="mb-4">Recolha os seguintes itens na ordem apresentada para uma rota otimizada.</p>
                     <div class="space-y-2 max-h-80 overflow-y-auto">${listHtml}</div>
-                `, () => handleCompletePicking(orderId, Date.now()), 'Separação Concluída');
+                `, () => handleCompletePicking(orderId, startTime), 'Separação Concluída');
             } catch (error) {
-                console.error("Erro ao iniciar separação:", error);
-                showError("Erro", "Não foi possível gerar a lista de separação.");
+                showError("Erro", "Não foi possível iniciar a tarefa de separação.");
             }
         };
 
         async function handleCompletePicking(orderId, startTime) {
-            disableModalConfirmButton('A completar...');
             try {
                 const endTime = Date.now();
                 const durationInSeconds = (endTime - startTime) / 1000;
                 
                 await addDoc(performanceLogCol, {
                     orderId,
-                    operatorName: currentOperator.name,
+                    operatorName: currentUser.name,
                     duration: durationInSeconds,
                     timestamp: serverTimestamp()
                 });
 
                 await updateDoc(doc(db, 'salesOrders', orderId), { status: 'Embalado' });
-                await logActivity(`Separação do pedido ${orderId.substring(0,5)}... concluída em ${formatDuration(durationInSeconds)}.`);
+                logActivity(`Separação do pedido ${orderId.substring(0,5)}... concluída em ${formatDuration(durationInSeconds)}.`);
                 closeModal(); // Fecha a modal de picking
                 startPacking(orderId); // Abre a de packing
             } catch (error) {
-                console.error("Erro ao completar separação:", error);
-                showError("Erro", "Não foi possível completar a tarefa de separação.");
-            } finally {
-                enableModalConfirmButton('Separação Concluída');
+                showError("Erro", "Não foi possível concluir a separação.");
             }
         }
         
         window.startPacking = async (orderId) => {
+            showLoadingModal("A calcular embalagem...");
             try {
                 const orderDoc = await getDoc(doc(db, 'salesOrders', orderId));
-                 if (!orderDoc.exists()) {
-                    showError("Erro", "Pedido não encontrado.");
-                    return;
-                }
                 const order = orderDoc.data();
                 
                 const invPromises = order.items.map(item => getDoc(doc(db, 'inventory', item.sku)));
@@ -1015,25 +953,20 @@
                         </div>
                     </div>
                 `, async () => {
-                    disableModalConfirmButton('A confirmar...');
                     try {
                         await updateDoc(doc(db, 'salesOrders', orderId), {
                             status: 'Aguardando Expedição',
-                            packedBy: currentOperator.name,
+                            packedBy: currentUser.name,
                             packageInfo: { suggestedBox: suggestedBox.name, totalWeight, totalVolume }
                         });
-                        await logActivity(`Embalagem concluída para pedido ${order.orderId}.`);
+                        logActivity(`Embalagem concluída para pedido ${order.orderId}.`);
                         closeModal();
                     } catch (error) {
-                        console.error("Erro ao confirmar embalagem:", error);
                         showError("Erro", "Não foi possível confirmar a embalagem.");
-                    } finally {
-                        enableModalConfirmButton('Confirmar Embalagem');
                     }
                 }, 'Confirmar Embalagem');
             } catch (error) {
-                console.error("Erro ao iniciar embalagem:", error);
-                showError("Erro", "Não foi possível calcular os dados para a embalagem.");
+                showError("Erro", "Não foi possível iniciar a embalagem.");
             }
         };
 
@@ -1100,7 +1033,7 @@
                     `;
                 }).join('');
                 resultDiv.innerHTML = quotesHtml;
-                getQuotesBtn.style.display = 'none'; // Hide button after getting quotes
+                getQuotesBtn.disabled = false;
             }, 1500);
         }
 
@@ -1112,35 +1045,26 @@
 
                 await runTransaction(db, async (transaction) => {
                     // --- ETAPA 1: LEITURA DE TODOS OS DOCUMENTOS ---
-                    // Primeiro, lemos o pedido principal.
                     const orderDoc = await transaction.get(orderRef);
-                    if (!orderDoc.exists()) {
-                        throw "Pedido não encontrado.";
-                    }
+                    if (!orderDoc.exists()) throw "Pedido não encontrado.";
                     const order = orderDoc.data();
 
-                    // Em seguida, lemos todos os documentos de inventário relacionados de uma só vez.
                     const inventoryRefs = order.items.map(item => doc(db, 'inventory', item.sku));
                     const inventoryDocs = await Promise.all(inventoryRefs.map(ref => transaction.get(ref)));
 
                     // --- ETAPA 2: VALIDAÇÃO DOS DADOS LIDOS ---
-                    // Com todos os dados em mãos, verificamos se a operação é válida.
                     const updates = [];
                     for (let i = 0; i < order.items.length; i++) {
                         const item = order.items[i];
                         const invDoc = inventoryDocs[i];
 
-                        if (!invDoc.exists()) {
-                            throw `Produto ${item.sku} não encontrado no inventário!`;
-                        }
-
+                        if (!invDoc.exists()) throw `Produto ${item.sku} não encontrado!`;
+                        
                         const invData = invDoc.data();
                         const newQty = invData.quantity - item.quantity;
 
-                        if (newQty < 0) {
-                            throw `Stock insuficiente para ${item.sku}!`;
-                        }
-                        // Guardamos as alterações a serem feitas, sem as executar ainda.
+                        if (newQty < 0) throw `Stock insuficiente para ${item.sku}!`;
+                        
                         updates.push({
                             ref: invDoc.ref,
                             data: {
@@ -1151,18 +1075,11 @@
                     }
 
                     // --- ETAPA 3: ESCRITA DE TODAS AS ALTERAÇÕES ---
-                    // Se todas as leituras e validações foram bem-sucedidas, executamos todas as escritas.
-                    updates.forEach(update => {
-                        transaction.update(update.ref, update.data);
-                    });
+                    updates.forEach(update => transaction.update(update.ref, update.data));
 
-                    // Por fim, atualizamos o próprio pedido.
                     transaction.update(orderRef, {
-                        status: 'Expedido',
-                        shippingCarrier: carrier,
-                        shippingCost: cost,
-                        trackingNumber: trackingNumber,
-                        shippedAt: serverTimestamp()
+                        status: 'Expedido', shippingCarrier: carrier, shippingCost: cost,
+                        trackingNumber: trackingNumber, shippedAt: serverTimestamp()
                     });
                 });
                 
@@ -1190,13 +1107,13 @@
             tableBody.innerHTML = docs.map(doc => {
                 const order = doc.data();
                 return `<tr class="border-b hover:bg-gray-50">
-                    <td class="p-3 font-medium">${order.orderId}</td>
-                    <td class="p-3">${order.customer}</td>
-                    <td class="p-3">${order.shippingCarrier || 'N/A'}</td>
-                    <td class="p-3">€${(order.shippingCost || 0).toFixed(2)}</td>
-                    <td class="p-3 font-mono text-sm">${order.trackingNumber || 'N/A'}</td>
-                    <td class="p-3 text-xs">${order.shippedAt?.toDate().toLocaleDateString('pt-PT') || ''}</td>
-                </tr>`;
+                        <td class="p-3 font-medium">${order.orderId}</td>
+                        <td class="p-3">${order.customer}</td>
+                        <td class="p-3">${order.shippingCarrier || 'N/A'}</td>
+                        <td class="p-3">€${(order.shippingCost || 0).toFixed(2)}</td>
+                        <td class="p-3 font-mono text-sm">${order.trackingNumber || 'N/A'}</td>
+                        <td class="p-3 text-xs">${order.shippedAt?.toDate().toLocaleDateString('pt-PT') || ''}</td>
+                    </tr>`;
             }).join('');
         }
 
@@ -1240,20 +1157,19 @@
                          </select>
                      </div>
                       <div id="location-criteria-div" class="hidden">
-                         <label for="location-criteria" class="block text-sm font-medium text-gray-700">Prefixo da Localização (Ex: A-01)</label>
+                          <label for="location-criteria" class="block text-sm font-medium text-gray-700">Prefixo da Localização (Ex: A-01)</label>
                          <input type="text" id="location-criteria" placeholder="Ex: A-01, B-03..." class="w-full p-2 border rounded mt-1">
                       </div>
                  </form>
              `, handleCreateCountTask, 'Gerar Tarefa');
              
              document.getElementById('count-type').addEventListener('change', (e) => {
-                 document.getElementById('abc-criteria-div').classList.toggle('hidden', e.target.value !== 'abc');
-                 document.getElementById('location-criteria-div').classList.toggle('hidden', e.target.value !== 'location');
+                  document.getElementById('abc-criteria-div').classList.toggle('hidden', e.target.value !== 'abc');
+                  document.getElementById('location-criteria-div').classList.toggle('hidden', e.target.value !== 'location');
              });
         });
 
         async function handleCreateCountTask() {
-            disableModalConfirmButton('A gerar...');
             try {
                 const type = document.getElementById('count-type').value;
                 let criteria, itemsToCount = [];
@@ -1265,29 +1181,20 @@
                     itemsToCount = allItems.filter(item => getAbcClass(item.salesCount || 0).class === criteria);
                 } else {
                     criteria = document.getElementById('location-criteria').value.trim().toUpperCase();
-                    if (!criteria) { 
-                        showError("Erro de Validação", "Por favor, insira um prefixo de localização.");
-                        return; 
-                    }
+                    if (!criteria) { throw new Error("Por favor, insira um prefixo de localização."); }
                     itemsToCount = allItems.filter(item => item.location && item.location.startsWith(criteria));
                 }
 
-                if (itemsToCount.length === 0) { 
-                    showError("Nenhum Item", `Nenhum item encontrado para o critério: ${criteria}`);
-                    return; 
-                }
+                if (itemsToCount.length === 0) { throw new Error(`Nenhum item encontrado para o critério: ${criteria}`); }
 
                 const taskItems = itemsToCount.map(item => ({ sku: item.sku, location: item.location, systemQty: item.quantity, countedQty: null, status: 'Pendente' }));
                 await addDoc(cycleCountTasksCol, {
                     type, criteria, status: 'Pendente', createdAt: serverTimestamp(), items: taskItems
                 });
-                await logActivity(`Tarefa de contagem criada: ${type} - ${criteria}`);
+                logActivity(`Tarefa de contagem criada: ${type} - ${criteria}`);
                 closeModal();
             } catch (error) {
-                console.error("Erro ao criar tarefa de contagem:", error);
-                showError("Erro", "Não foi possível criar a tarefa de contagem.");
-            } finally {
-                enableModalConfirmButton('Gerar Tarefa');
+                showError("Erro ao Criar Tarefa", error.message);
             }
         }
 
@@ -1305,9 +1212,9 @@
                     'Aguardando Aprovação': 'bg-yellow-200 text-yellow-800', 'Concluída': 'bg-green-200 text-green-800'
                 };
                 let actions = '';
-                if(task.status === 'Pendente') {
+                if(task.status === 'Pendente' && currentUser.role === 'Gestor') {
                     actions = `<button onclick="window.assignCycleCountTask('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Atribuir</button>`;
-                } else if(task.status === 'Aguardando Aprovação') {
+                } else if(task.status === 'Aguardando Aprovação' && currentUser.role === 'Gestor') {
                     actions = `<button onclick="window.reviewDiscrepancy('${doc.id}')" class="bg-yellow-500 text-white px-2 py-1 text-xs rounded hover:bg-yellow-600">Rever</button>`;
                 }
                 
@@ -1325,10 +1232,11 @@
         }
 
         window.assignCycleCountTask = async (taskId) => {
+            showLoadingModal("A carregar operadores...");
             try {
-                const opsSnapshot = await getDocs(operatorsCol);
-                if (opsSnapshot.empty) {
-                    showError("Sem Operadores", "Não há operadores para atribuir a tarefa.");
+                const opsSnapshot = await getDocs(query(operatorsCol, where('role', '==', 'Operador')));
+                 if (opsSnapshot.empty) {
+                    showError("Sem Operadores", "Nenhum utilizador com o perfil 'Operador' foi encontrado.");
                     return;
                 }
                 const options = opsSnapshot.docs.map(d => `<option value="${d.id}" data-name="${d.data().name}">${d.data().name}</option>`).join('');
@@ -1337,13 +1245,11 @@
                     <select id="operator-select-count" class="w-full p-2 border rounded mt-2">${options}</select>
                 `, () => handleAssignCycleCountTask(taskId), 'Atribuir');
             } catch (error) {
-                console.error("Erro ao carregar operadores:", error);
                 showError("Erro", "Não foi possível carregar a lista de operadores.");
             }
         };
 
         async function handleAssignCycleCountTask(taskId) {
-            disableModalConfirmButton('A atribuir...');
             try {
                 const select = document.getElementById('operator-select-count');
                 const operatorId = select.value;
@@ -1353,23 +1259,16 @@
                     assignedToId: operatorId,
                     assignedToName: operatorName
                 });
-                await logActivity(`Tarefa de contagem ${taskId.substring(0,5)}... atribuída a ${operatorName}.`);
+                logActivity(`Tarefa de contagem ${taskId.substring(0,5)}... atribuída a ${operatorName}.`);
                 closeModal();
             } catch (error) {
-                console.error("Erro ao atribuir tarefa:", error);
-                showError("Erro", "Não foi possível atribuir a tarefa de contagem.");
-            } finally {
-                enableModalConfirmButton('Atribuir');
+                showError("Erro", "Não foi possível atribuir a tarefa.");
             }
         }
 
         window.startCountingTask = async (taskId) => {
-            try {
+             try {
                 const taskDoc = await getDoc(doc(db, 'cycleCountTasks', taskId));
-                if (!taskDoc.exists()) {
-                    showError("Erro", "Tarefa de contagem não encontrada.");
-                    return;
-                }
                 const task = taskDoc.data();
                 const sortedItems = [...task.items].sort((a, b) => a.location.localeCompare(b.location));
                 
@@ -1386,21 +1285,16 @@
                     <div class="space-y-2 max-h-80 overflow-y-auto">${listHtml}</div>
                 `, () => submitCount(taskId, sortedItems), 'Submeter Contagem');
             } catch (error) {
-                console.error("Erro ao iniciar contagem:", error);
-                showError("Erro", "Não foi possível carregar os itens para contagem.");
+                showError("Erro", "Não foi possível iniciar a tarefa.");
             }
         };
 
         async function submitCount(taskId, originalItems) {
-            disableModalConfirmButton('A submeter...');
             try {
                 const inputs = document.querySelectorAll('.counted-qty-input');
                 let hasDiscrepancy = false;
                 const updatedItems = originalItems.map((item, index) => {
                     const countedQty = inputs[index].value === '' ? null : parseInt(inputs[index].value, 10);
-                    if (countedQty !== null && countedQty < 0) {
-                        throw new Error(`Quantidade contada para ${item.sku} não pode ser negativa.`);
-                    }
                     if (countedQty !== null && countedQty !== item.systemQty) {
                         hasDiscrepancy = true;
                     }
@@ -1412,29 +1306,23 @@
                     items: updatedItems,
                     status: newStatus
                 });
-                await logActivity(`Contagem para tarefa ${taskId.substring(0,5)}... submetida.`);
+                logActivity(`Contagem para tarefa ${taskId.substring(0,5)}... submetida.`);
                 closeModal();
             } catch (error) {
-                console.error("Erro ao submeter contagem:", error);
-                showError("Erro", error.message || "Não foi possível submeter a contagem.");
-            } finally {
-                enableModalConfirmButton('Submeter Contagem');
+                showError("Erro", "Não foi possível submeter a contagem.");
             }
         }
 
         window.reviewDiscrepancy = async (taskId) => {
+            showLoadingModal("A rever discrepâncias...");
             try {
                 const taskDoc = await getDoc(doc(db, 'cycleCountTasks', taskId));
-                if (!taskDoc.exists()) {
-                    showError("Erro", "Tarefa não encontrada.");
-                    return;
-                }
                 const task = taskDoc.data();
                 const discrepancies = task.items.filter(i => i.status !== 'Ajustado' && i.countedQty !== null && i.countedQty !== i.systemQty);
 
                 if (discrepancies.length === 0) {
-                    await updateDoc(doc(db, 'cycleCountTasks', taskId), { status: 'Concluída'});
                     closeModal();
+                    await updateDoc(doc(db, 'cycleCountTasks', taskId), { status: 'Concluída'});
                     return;
                 }
 
@@ -1459,22 +1347,20 @@
                      <div class="mt-4 text-right">
                          <button onclick="window.closeTaskWithoutAdjustment('${taskId}')" class="bg-gray-500 text-white px-3 py-1 text-sm rounded hover:bg-gray-600">Fechar Tarefa Sem Ajustar</button>
                      </div>
-                `, null, '', true); // No default buttons
+                `, null, '', true);
             } catch (error) {
-                console.error("Erro ao rever discrepâncias:", error);
-                showError("Erro", "Não foi possível carregar as discrepâncias.");
+                 showError("Erro", "Não foi possível carregar as discrepâncias.");
             }
         };
         
         window.approveAdjustment = async (taskId, sku, countedQty) => {
             try {
                 const taskRef = doc(db, 'cycleCountTasks', taskId);
+
                 await runTransaction(db, async (transaction) => {
                     const taskDoc = await transaction.get(taskRef);
-                    if (!taskDoc.exists()) { throw new Error("Tarefa não encontrada."); }
                     const task = taskDoc.data();
                     const itemToAdjust = task.items.find(i => i.sku === sku);
-                    if (!itemToAdjust) { throw new Error("Item a ajustar não encontrado na tarefa."); }
 
                     const invRef = doc(db, 'inventory', sku);
                     transaction.update(invRef, { quantity: countedQty });
@@ -1495,31 +1381,29 @@
                     }, { merge: true });
                 });
 
-                await logActivity(`Ajuste de stock para ${sku} aprovado. Nova Qtd: ${countedQty}.`);
+                logActivity(`Ajuste de stock para ${sku} aprovado. Nova Qtd: ${countedQty}.`);
                 reviewDiscrepancy(taskId); // Refresh the modal
             } catch (error) {
-                console.error("Erro ao aprovar ajuste:", error);
-                showError("Erro de Transação", `Não foi possível aprovar o ajuste. Detalhe: ${error.message}`);
+                showError("Erro", "Não foi possível aprovar o ajuste.");
             }
         };
         
         window.closeTaskWithoutAdjustment = async (taskId) => {
             try {
-                 await updateDoc(doc(db, 'cycleCountTasks', taskId), { status: 'Concluída' });
-                 await logActivity(`Tarefa de contagem ${taskId.substring(0,5)}... fechada sem ajustes.`);
-                 closeModal();
+                await updateDoc(doc(db, 'cycleCountTasks', taskId), { status: 'Concluída' });
+                logActivity(`Tarefa de contagem ${taskId.substring(0,5)}... fechada sem ajustes.`);
+                closeModal();
             } catch (error) {
-                console.error("Erro ao fechar tarefa:", error);
                 showError("Erro", "Não foi possível fechar a tarefa.");
             }
         }
 
         // --- REPORTS ---
         async function generateReports() {
-            try {
-                document.getElementById('reports-last-updated').textContent = `Atualizado em: ${new Date().toLocaleString('pt-PT')}`;
+            document.getElementById('reports-last-updated').textContent = `Atualizado em: ${new Date().toLocaleString('pt-PT')}`;
 
-                // Operator Performance
+            // Operator Performance
+            try {
                 const perfSnapshot = await getDocs(performanceLogCol);
                 const performanceByOperator = perfSnapshot.docs.reduce((acc, doc) => {
                     const log = doc.data();
@@ -1548,8 +1432,12 @@
                              `).join('')}</tbody>
                          </table>`;
                 }
+            } catch (error) {
+                document.getElementById('operator-performance-report').innerHTML = `<p class="text-red-500">Erro ao gerar relatório de performance.</p>`;
+            }
 
-                // Inventory ABC Analysis
+            // Inventory ABC Analysis
+            try {
                 const invSnapshot = await getDocs(inventoryCol);
                 const abcCounts = invSnapshot.docs.reduce((acc, doc) => {
                     const abcClass = getAbcClass(doc.data().salesCount || 0).class;
@@ -1571,25 +1459,16 @@
                     }).join('');
                 }
             } catch (error) {
-                console.error("Erro ao gerar relatórios:", error);
-                document.getElementById('operator-performance-report').innerHTML = `<p class="text-red-500">Falha ao gerar relatório de performance.</p>`;
-                document.getElementById('inventory-abc-analysis').innerHTML = `<p class="text-red-500">Falha ao gerar análise de inventário.</p>`;
+                document.getElementById('inventory-abc-analysis').innerHTML = `<p class="text-red-500">Erro ao gerar análise de inventário.</p>`;
             }
         }
         
         // --- MY TASKS ---
-        function updateMyTasks(orderDocs, allCountDocs) {
-            if (!currentOperator) return;
-
+        async function updateMyTasks(orderDocs, countDocs) {
             const myTasksList = document.getElementById('my-tasks-list');
             
-            const pickingTasks = orderDocs
-                .filter(doc => doc.data().assignedTo === currentOperator.id && ['Em Separação', 'Embalado'].includes(doc.data().status))
-                .map(doc => ({ id: doc.id, data: doc.data(), type: 'picking' }));
-            
-            const countingTasks = allCountDocs
-                .filter(doc => doc.data().assignedToId === currentOperator.id && doc.data().status === 'Atribuída')
-                .map(doc => ({ id: doc.id, data: doc.data(), type: 'counting' }));
+            const pickingTasks = orderDocs.map(doc => ({ id: doc.id, data: doc.data(), type: 'picking' }));
+            const countingTasks = countDocs.map(doc => ({ id: doc.id, data: doc.data(), type: 'counting' }));
 
             const allTasks = [...pickingTasks, ...countingTasks];
 
@@ -1602,17 +1481,87 @@
                 if (task.type === 'picking') {
                     const isPacking = task.data.status === 'Embalado';
                     return `<div class="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
-                        <div><p class="font-bold text-lg">${task.data.orderId}</p><p class="text-sm ${isPacking ? 'text-blue-600' : 'text-yellow-600'}">Tarefa de ${isPacking ? 'Embalagem' : 'Separação'}</p></div>
-                        <button onclick="window.${isPacking ? 'startPacking' : 'startPickingTask'}('${task.id}')" class="bg-green-600 text-white p-2 rounded hover:bg-green-700">${isPacking ? 'Iniciar Embalagem' : 'Iniciar Separação'}</button>
-                    </div>`;
+                                <div><p class="font-bold text-lg">${task.data.orderId}</p><p class="text-sm ${isPacking ? 'text-blue-600' : 'text-yellow-600'}">Tarefa de ${isPacking ? 'Embalagem' : 'Separação'}</p></div>
+                                <button onclick="window.${isPacking ? 'startPacking' : 'startPickingTask'}('${task.id}')" class="bg-green-600 text-white p-2 rounded hover:bg-green-700">${isPacking ? 'Iniciar Embalagem' : 'Iniciar Separação'}</button>
+                            </div>`;
                 } else { // counting task
                      return `<div class="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
-                        <div><p class="font-bold text-lg">Contagem: ${task.data.criteria}</p><p class="text-sm text-purple-600">Tarefa de Contagem Cíclica</p></div>
-                        <button onclick="window.startCountingTask('${task.id}')" class="bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Iniciar</button>
-                    </div>`;
+                                <div><p class="font-bold text-lg">Contagem: ${task.data.criteria}</p><p class="text-sm text-purple-600">Tarefa de Contagem Cíclica</p></div>
+                                <button onclick="window.startCountingTask('${task.id}')" class="bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Iniciar</button>
+                            </div>`;
                 }
             }).join('');
         }
+        
+        // --- USER MANAGEMENT (GESTORES) ---
+        document.getElementById('create-operator-form').addEventListener('submit', handleCreateOperator);
+
+        async function handleCreateOperator(e) {
+            e.preventDefault();
+            const form = e.target;
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            try {
+                const name = document.getElementById('operator-new-name').value;
+                const email = document.getElementById('operator-new-email').value;
+                const password = document.getElementById('operator-new-password').value;
+                const role = document.getElementById('operator-new-role').value;
+                
+                // Verifica se já existe um utilizador com este email
+                const q = query(operatorsCol, where("email", "==", email));
+                const existing = await getDocs(q);
+                if (!existing.empty) {
+                    throw new Error("Já existe um utilizador com este email.");
+                }
+
+                await addDoc(operatorsCol, { name, email, password, role });
+                logActivity(`Novo utilizador '${name}' (${role}) criado.`);
+                form.reset();
+            } catch (error) {
+                showError("Erro ao Criar Utilizador", error.message);
+            } finally {
+                button.disabled = false;
+            }
+        }
+        
+        function loadOperatorsForManagement() {
+             const listDiv = document.getElementById('management-operator-list');
+             onSnapshot(query(operatorsCol, orderBy('name')), (snapshot) => {
+                 if (snapshot.empty) {
+                     listDiv.innerHTML = '<p class="text-gray-500">Nenhum utilizador registado.</p>';
+                 } else {
+                     listDiv.innerHTML = snapshot.docs.map(doc => {
+                         const operator = doc.data();
+                         return `<div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                                     <div>
+                                         <p class="font-bold">${operator.name}</p>
+                                         <p class="text-xs text-gray-600">${operator.email} - <span class="font-semibold">${operator.role}</span></p>
+                                     </div>
+                                     <button onclick="window.deleteOperator('${doc.id}', '${operator.name}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+                                 </div>`;
+                     }).join('');
+                 }
+             }, (error) => {
+                listDiv.innerHTML = '<p class="text-red-500">Erro ao carregar a lista de utilizadores.</p>';
+             });
+        }
+        
+        window.deleteOperator = async (docId, name) => {
+             if (docId === currentUser.id) {
+                showError("Ação Inválida", "Não pode apagar a sua própria conta de utilizador.");
+                return;
+             }
+             openModal(`Apagar Utilizador`, `<p>Tem a certeza que deseja apagar o utilizador <strong>${name}</strong>? Esta ação não pode ser desfeita.</p>`, async () => {
+                 try {
+                    await deleteDoc(doc(db, 'operators', docId));
+                    logActivity(`Utilizador '${name}' apagado.`);
+                    closeModal();
+                 } catch (error) {
+                    showError("Erro ao Apagar", "Não foi possível apagar o utilizador.");
+                 }
+             }, 'Apagar', true);
+        };
+
 
         // --- UTILS & MODAL ---
         function formatDuration(seconds) {
@@ -1622,28 +1571,36 @@
             return `${minutes}m ${remainingSeconds}s`;
         }
         
-        function openModal(title, content, onConfirm, confirmText = 'Confirmar', hideDefaultButtons = false) {
+        function openModal(title, content, onConfirm, confirmText = 'Confirmar', isDestructive = false) {
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-body').innerHTML = content;
             const confirmBtn = document.getElementById('modal-confirm-btn');
             const cancelBtn = document.getElementById('modal-cancel-btn');
-            const footer = document.getElementById('modal-footer');
             
-            if (hideDefaultButtons) {
-                footer.style.display = 'none';
-            } else {
-                footer.style.display = 'block';
-            }
+            confirmBtn.classList.toggle('bg-red-600', isDestructive);
+            confirmBtn.classList.toggle('hover:bg-red-700', isDestructive);
+            confirmBtn.classList.toggle('bg-indigo-600', !isDestructive);
+            confirmBtn.classList.toggle('hover:bg-indigo-700', !isDestructive);
             
             cancelBtn.style.display = 'inline-block';
             if (onConfirm) {
                 confirmBtn.style.display = 'inline-block';
                 confirmBtn.textContent = confirmText;
-                enableModalConfirmButton(confirmText); // Reset button state
-                confirmCallback = onConfirm;
-                confirmBtn.onclick = () => confirmCallback();
+                
+                // Remove o listener antigo para evitar múltiplos cliques
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                
+                newConfirmBtn.addEventListener('click', () => {
+                    newConfirmBtn.disabled = true;
+                    onConfirm();
+                });
+
             } else {
                 confirmBtn.style.display = 'none';
+                if(confirmText === null) { // Usado para modais de apenas informação sem botões
+                    cancelBtn.style.display = 'none';
+                }
             }
             
             document.getElementById('modal').classList.remove('hidden');
@@ -1656,49 +1613,49 @@
             document.querySelector('.modal-content').classList.add('scale-95');
             setTimeout(() => document.getElementById('modal').classList.add('hidden'), 250);
         }
-
-        function showError(title, message) {
-            const errorContent = `<div class="text-center">
-                <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-                <p class="text-gray-700">${message}</p>
-            </div>`;
-            openModal(title, errorContent, closeModal, 'Fechar');
-        }
-
+        
         function showLoadingModal(message) {
-            const content = `<div class="text-center p-4">
-                <i class="fas fa-spinner fa-spin text-4xl text-indigo-600 mb-4"></i>
-                <p>${message}</p>
-            </div>`;
-            openModal('Aguarde...', content, null, '', true); // hide default buttons
+            openModal('Aguarde', `<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-indigo-600"></i><p class="mt-3">${message}</p></div>`, null, null);
         }
-
-        function disableModalConfirmButton(text = 'Aguarde...') {
-            const confirmBtn = document.getElementById('modal-confirm-btn');
-            if (confirmBtn) {
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${text}`;
-            }
-        }
-
-        function enableModalConfirmButton(originalText = 'Confirmar') {
-            const confirmBtn = document.getElementById('modal-confirm-btn');
-            if (confirmBtn) {
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = originalText;
-            }
+        
+        function showError(title, message) {
+            openModal(title, `<p class="text-red-600">${message}</p>`, closeModal, 'Fechar');
         }
 
         document.getElementById('modal-close-btn').addEventListener('click', closeModal);
         document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
 
-        // --- INITIALIZATION ---
-        loadOperators();
+        // --- INICIALIZAÇÃO E PRIMEIRO ARRANQUE ---
+        async function criarPrimeiroGestor() {
+            const emailGestor = 'gestor@wms.com';
+            const q = query(operatorsCol, where("email", "==", emailGestor));
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) {
+                console.log("A criar primeiro utilizador gestor...");
+                await addDoc(operatorsCol, {
+                    name: 'Gestor Principal',
+                    email: emailGestor,
+                    password: '123456', // Mude esta senha em produção
+                    role: 'Gestor'
+                });
+                console.log("Primeiro gestor criado com sucesso! Email: gestor@wms.com, Pass: 123456");
+            } else {
+                console.log("O utilizador gestor já existe.");
+            }
+        }
+        
+        function primeiroArranque() {
+            // ========================================================================
+            // INSTRUÇÃO IMPORTANTE: Para criar o primeiro utilizador administrador:
+            // 1. Remova os '//' da linha abaixo.
+            // 2. Recarregue a página uma vez. O utilizador será criado.
+            // 3. Adicione os '//' de volta na linha para não criar o utilizador novamente.
+            // ========================================================================
+            // criarPrimeiroGestor();
+        }
+
+        primeiroArranque();
     </script>
 </body>
 </html>
-
-
-
-
 
