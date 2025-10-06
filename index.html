@@ -1061,9 +1061,9 @@
 
                 document.getElementById('get-quotes-btn').addEventListener('click', () => simulateFreightQuote(orderId, totalWeight, totalVolume));
             } catch (error) {
-                console.error("Erro ao abrir modal TMS:", error);
-                showError("Erro", "Não foi possível carregar dados do pedido para expedição.");
-            }
+            openModal(`Integração TMS - Pedido ${order.orderId}`, modalContent, null, '', true);
+
+            document.getElementById('get-quotes-btn').addEventListener('click', () => simulateFreightQuote(orderId, totalWeight, totalVolume));
         };
 
         function simulateFreightQuote(orderId, weight, volume) {
@@ -1100,36 +1100,58 @@
         }
 
         window.selectCarrierAndShip = async (orderId, carrier, cost) => {
-            // This is complex, so let's use the modal button disabling
-            disableModalConfirmButton('A expedir...');
-            const originalClose = document.getElementById('modal-close-btn').onclick;
-            document.getElementById('modal-close-btn').onclick = null; // Prevent closing during transaction
-
+            showLoadingModal('A processar expedição...');
             try {
-                 const orderRef = doc(db, 'salesOrders', orderId);
-                 const trackingNumber = `TRK${Date.now()}`.slice(0, 12);
+                const orderRef = doc(db, 'salesOrders', orderId);
+                const trackingNumber = `TRK${Date.now()}`.slice(0, 12);
 
-                 await runTransaction(db, async (transaction) => {
+                await runTransaction(db, async (transaction) => {
+                    // --- ETAPA 1: LEITURA DE TODOS OS DOCUMENTOS ---
+                    // Primeiro, lemos o pedido principal.
                     const orderDoc = await transaction.get(orderRef);
-                    if (!orderDoc.exists()) { throw new Error("Pedido não encontrado."); }
+                    if (!orderDoc.exists()) {
+                        throw "Pedido não encontrado.";
+                    }
                     const order = orderDoc.data();
 
-                    for (const item of order.items) {
-                        const invRef = doc(db, 'inventory', item.sku);
-                        const invDoc = await transaction.get(invRef);
-                        if (invDoc.exists()) {
-                            const invData = invDoc.data();
-                            const newQty = invData.quantity - item.quantity;
-                            if (newQty < 0) { throw new Error(`Stock insuficiente para ${item.sku}!`); }
-                            transaction.update(invRef, { 
+                    // Em seguida, lemos todos os documentos de inventário relacionados de uma só vez.
+                    const inventoryRefs = order.items.map(item => doc(db, 'inventory', item.sku));
+                    const inventoryDocs = await Promise.all(inventoryRefs.map(ref => transaction.get(ref)));
+
+                    // --- ETAPA 2: VALIDAÇÃO DOS DADOS LIDOS ---
+                    // Com todos os dados em mãos, verificamos se a operação é válida.
+                    const updates = [];
+                    for (let i = 0; i < order.items.length; i++) {
+                        const item = order.items[i];
+                        const invDoc = inventoryDocs[i];
+
+                        if (!invDoc.exists()) {
+                            throw `Produto ${item.sku} não encontrado no inventário!`;
+                        }
+
+                        const invData = invDoc.data();
+                        const newQty = invData.quantity - item.quantity;
+
+                        if (newQty < 0) {
+                            throw `Stock insuficiente para ${item.sku}!`;
+                        }
+                        // Guardamos as alterações a serem feitas, sem as executar ainda.
+                        updates.push({
+                            ref: invDoc.ref,
+                            data: {
                                 quantity: newQty,
                                 salesCount: (invData.salesCount || 0) + item.quantity
-                            });
-                        } else {
-                            throw new Error(`Produto ${item.sku} não encontrado no inventário.`);
-                        }
+                            }
+                        });
                     }
-                    
+
+                    // --- ETAPA 3: ESCRITA DE TODAS AS ALTERAÇÕES ---
+                    // Se todas as leituras e validações foram bem-sucedidas, executamos todas as escritas.
+                    updates.forEach(update => {
+                        transaction.update(update.ref, update.data);
+                    });
+
+                    // Por fim, atualizamos o próprio pedido.
                     transaction.update(orderRef, {
                         status: 'Expedido',
                         shippingCarrier: carrier,
@@ -1137,23 +1159,20 @@
                         trackingNumber: trackingNumber,
                         shippedAt: serverTimestamp()
                     });
-                 });
-                 
-                 await logActivity(`Pedido ${orderId.substring(0,5)}... expedido via ${carrier}. Custo: €${cost.toFixed(2)}`);
-                 closeModal();
-                 openModal('Expedição Concluída', `
-                     <p class="text-center">Etiqueta gerada com sucesso!</p>
-                     <div class="mt-4 bg-gray-100 p-4 rounded text-center">
-                         <p>Transportadora: <strong>${carrier}</strong></p>
-                         <p>Rastreio: <strong>${trackingNumber}</strong></p>
-                     </div>
-                 `, closeModal, 'Fechar');
+                });
+                
+                logActivity(`Pedido ${orderId} expedido via ${carrier}. Custo: €${cost.toFixed(2)}`);
+                closeModal();
+                openModal('Expedição Concluída', `
+                    <p class="text-center">Etiqueta gerada com sucesso!</p>
+                    <div class="mt-4 bg-gray-100 p-4 rounded text-center">
+                        <p>Transportadora: <strong>${carrier}</strong></p>
+                        <p>Rastreio: <strong>${trackingNumber}</strong></p>
+                    </div>
+                `, closeModal, 'Fechar');
             } catch (error) {
-                console.error("Erro na transação de expedição:", error);
-                showError("Erro Crítico de Transação", `Não foi possível expedir o pedido. O stock não foi alterado. Detalhe: ${error.message}`);
-            } finally {
-                // Re-enable closing the modal
-                document.getElementById('modal-close-btn').onclick = originalClose;
+                console.error("Erro ao expedir pedido:", error);
+                showError('Erro de Expedição', `Não foi possível expedir o pedido. O stock não foi alterado. Detalhe: ${error}`);
             }
         };
 
@@ -1673,6 +1692,7 @@
     </script>
 </body>
 </html>
+
 
 
 
