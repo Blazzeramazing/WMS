@@ -396,6 +396,7 @@
 
             const listeners = [
                 onSnapshot(inventoryCol, snapshot => {
+                    document.getElementById('kpi-total-skus').textContent = snapshot.size;
                     // Ordenação movida para o lado do cliente para evitar a necessidade de índices
                     const sortedDocs = [...snapshot.docs].sort((a, b) => {
                         const skuA = a.data().sku || '';
@@ -1045,6 +1046,10 @@
                     return;
                 }
                 const order = orderDoc.data();
+                if (!order.packageInfo) {
+                    showError("Erro de Dados", "Informação do pacote não encontrada. Complete a embalagem primeiro.");
+                    return;
+                }
                 const { totalWeight, totalVolume } = order.packageInfo;
 
                 const modalContent = `
@@ -1057,13 +1062,13 @@
                         <div id="quotes-result" class="mt-4 space-y-2"></div>
                     </div>
                 `;
-                openModal(`Integração TMS - Pedido ${order.orderId}`, modalContent, null, null);
+                openModal(`Integração TMS - Pedido ${order.orderId}`, modalContent, null, '', true);
 
                 document.getElementById('get-quotes-btn').addEventListener('click', () => simulateFreightQuote(orderId, totalWeight, totalVolume));
             } catch (error) {
-            openModal(`Integração TMS - Pedido ${order.orderId}`, modalContent, null, '', true);
-
-            document.getElementById('get-quotes-btn').addEventListener('click', () => simulateFreightQuote(orderId, totalWeight, totalVolume));
+                console.error("Erro ao abrir modal TMS:", error);
+                showError("Erro", "Não foi possível carregar os dados para a cotação de frete.");
+            }
         };
 
         function simulateFreightQuote(orderId, weight, volume) {
@@ -1692,6 +1697,7 @@
     </script>
 </body>
 </html>
+
 
 
 
