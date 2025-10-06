@@ -296,16 +296,24 @@
         // --- OPERATOR & LOGIN MANAGEMENT ---
         async function loadOperators() {
             const operatorListDiv = document.getElementById('operator-list');
-            onSnapshot(query(operatorsCol, orderBy('name')), (snapshot) => {
-                if (snapshot.empty) {
-                    operatorListDiv.innerHTML = '<p class="text-gray-500">Nenhum operador registado.</p>';
-                } else {
-                    operatorListDiv.innerHTML = snapshot.docs.map(doc => {
-                        const operator = doc.data();
-                        return `<button data-id="${doc.id}" data-name="${operator.name}" class="operator-btn w-full text-left p-3 bg-gray-100 hover:bg-indigo-100 rounded-lg transition">${operator.name}</button>`;
-                    }).join('');
+            const q = query(operatorsCol, orderBy('name'));
+            
+            onSnapshot(q, 
+                (snapshot) => {
+                    if (snapshot.empty) {
+                        operatorListDiv.innerHTML = '<p class="text-gray-500">Nenhum operador registado.</p>';
+                    } else {
+                        operatorListDiv.innerHTML = snapshot.docs.map(doc => {
+                            const operator = doc.data();
+                            return `<button data-id="${doc.id}" data-name="${operator.name}" class="operator-btn w-full text-left p-3 bg-gray-100 hover:bg-indigo-100 rounded-lg transition">${operator.name}</button>`;
+                        }).join('');
+                    }
+                }, 
+                (error) => {
+                    console.error("Erro ao carregar a lista de operadores: ", error);
+                    operatorListDiv.innerHTML = '<p class="text-red-500 font-semibold">Ocorreu um erro ao carregar os operadores. Verifique as permissões da base de dados e a consola para mais detalhes.</p>';
                 }
-            });
+            );
         }
 
         document.getElementById('operator-list').addEventListener('click', (e) => {
@@ -381,16 +389,23 @@
             activeListeners.forEach(unsubscribe => unsubscribe());
             activeListeners = [];
             
+            // Carrega os dados uma vez para evitar piscar de ecrã
+            getDocs(cycleCountTasksCol).then(snapshot => {
+                cachedCycleCountTasks = snapshot.docs;
+            });
+
             const listeners = [
-                // Inventory & Products
-                onSnapshot(query(inventoryCol, orderBy("sku")), snapshot => updateInventoryTable(snapshot.docs)),
-                onSnapshot(inventoryCol, snapshot => { document.getElementById('kpi-total-skus').textContent = snapshot.size; }),
-                
-                // Inbound
+                onSnapshot(inventoryCol, snapshot => {
+                    // Ordenação movida para o lado do cliente para evitar a necessidade de índices
+                    const sortedDocs = [...snapshot.docs].sort((a, b) => {
+                        const skuA = a.data().sku || '';
+                        const skuB = b.data().sku || '';
+                        return skuA.localeCompare(skuB);
+                    });
+                    updateInventoryTable(sortedDocs);
+                }),
                 onSnapshot(query(purchaseOrdersCol, orderBy("createdAt", "desc")), snapshot => updatePendingAsnList(snapshot.docs)),
-                
-                // Outbound & Tasks (Combined for efficiency)
-                onSnapshot(query(salesOrdersCol, orderBy("createdAt", "desc")), snapshot => {
+                onSnapshot(query(salesOrdersCol, orderBy("createdAt", "desc")), async snapshot => {
                     const salesOrders = snapshot.docs;
                     cachedSalesOrders = salesOrders; // Cache for use by other listeners
                     updatePendingOrdersList(salesOrders);
@@ -607,13 +622,21 @@
         }
 
         window.addAsnItem = async (docId) => {
+            showLoadingModal('A carregar lista de produtos...');
             try {
-                const allSkusSnapshot = await getDocs(query(inventoryCol, orderBy('sku')));
-                const options = allSkusSnapshot.docs.map(d => `<option value="${d.id}">${d.id} - ${d.data().name}</option>`).join('');
-                if(allSkusSnapshot.empty){
-                    showError("Inventário Vazio", "Não há produtos no inventário para adicionar.");
+                // Removido orderBy para evitar necessidade de índice; ordenação feita no cliente
+                const allSkusSnapshot = await getDocs(inventoryCol);
+                
+                const productList = allSkusSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                productList.sort((a, b) => (a.data.sku || '').localeCompare(b.data.sku || ''));
+                
+                if(productList.length === 0) {
+                    openModal('Aviso', '<p>Não há produtos no inventário. Adicione um produto primeiro.</p>', closeModal, 'Fechar');
                     return;
                 }
+
+                const options = productList.map(p => `<option value="${p.id}">${p.data.sku} - ${p.data.name}</option>`).join('');
+
                 openModal('Adicionar Item ao Recebimento', `
                     <form id="add-asn-item-form" class="space-y-4">
                         <div>
@@ -796,13 +819,21 @@
         }
 
         window.addOrderItem = async (orderId) => {
+            showLoadingModal('A carregar lista de produtos...');
             try {
-                const allSkusSnapshot = await getDocs(query(inventoryCol, where('quantity', '>', 0), orderBy('quantity'), orderBy('sku')));
-                if (allSkusSnapshot.empty) {
-                    showError("Sem Stock", "Não há produtos com stock disponível para adicionar.");
+                // Removido orderBy para evitar necessidade de índice; ordenação feita no cliente
+                const allSkusSnapshot = await getDocs(inventoryCol);
+
+                const productList = allSkusSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                productList.sort((a, b) => (a.data.sku || '').localeCompare(b.data.sku || ''));
+
+                if(productList.length === 0) {
+                    openModal('Aviso', '<p>Não há produtos no inventário para adicionar.</p>', closeModal, 'Fechar');
                     return;
                 }
-                const options = allSkusSnapshot.docs.map(d => `<option value="${d.id}" data-loc="${d.data().location}">${d.id} - ${d.data().name} (Disp: ${d.data().quantity})</option>`).join('');
+
+                const options = productList.map(p => `<option value="${p.id}" data-loc="${p.data.location}">${p.id} - ${p.data.name} (Disp: ${p.data.quantity})</option>`).join('');
+                
                 openModal('Adicionar Item ao Pedido', `
                     <form id="add-order-item-form" class="space-y-4">
                         <div><label>SKU</label><select id="order-item-sku" class="w-full p-2 border rounded">${options}</select></div>
@@ -1634,3 +1665,5 @@
     </script>
 </body>
 </html>
+
+
