@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS - Gestão de Centro de Distribuição</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-icon { transition: all 0.2s ease-in-out; }
+        .sidebar-icon:hover { transform: scale(1.1); }
+        .kpi-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .modal { transition: opacity 0.25s ease; }
+        .modal-content { transition: transform 0.25s ease; }
+        .status-badge, .abc-badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        #operator-login-screen { background: linear-gradient(135deg, #4f46e5, #818cf8); }
+        .bar-chart-bar { transition: width 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Ecrã de Seleção de Operador (Login) -->
+    <div id="operator-login-screen" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md text-center">
+            <i class="fa-solid fa-warehouse text-5xl text-indigo-600 mb-4"></i>
+            <h1 class="text-3xl font-bold mb-2">Sistema WMS</h1>
+            <p class="text-gray-600 mb-6">Selecione o seu utilizador para iniciar</p>
+            <div id="operator-list" class="space-y-3 mb-6 max-h-60 overflow-y-auto">
+                <p>A carregar operadores...</p>
+            </div>
+            <div class="text-sm">
+                <span>Não está na lista?</span>
+                <a href="#" id="add-operator-link" class="text-indigo-600 hover:underline font-semibold">Adicione um novo</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estrutura Principal da Aplicação -->
+    <div id="app-container" class="hidden w-full h-screen flex">
+        <!-- Sidebar de Navegação -->
+        <aside class="w-20 bg-gray-800 text-white p-4 flex flex-col items-center space-y-8 shadow-lg">
+            <div class="text-indigo-400"> <i class="fa-solid fa-warehouse fa-2x"></i> </div>
+            <nav class="flex flex-col space-y-8">
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('dashboard')" title="Dashboard"><i class="fa-solid fa-chart-pie fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('tasks')" title="Minhas Tarefas"><i class="fa-solid fa-list-check fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('inbound')" title="Recebimento (Inbound)"><i class="fa-solid fa-dolly fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('inventory')" title="Gestão de Inventário"><i class="fa-solid fa-boxes-stacked fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('outbound')" title="Expedição (Outbound)"><i class="fa-solid fa-truck-fast fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('tms')" title="Transporte (TMS)"><i class="fa-solid fa-route fa-2x"></i></a>
+                <a href="#" class="sidebar-icon text-gray-300 hover:text-indigo-400" onclick="showView('reports')" title="Relatórios"><i class="fa-solid fa-file-signature fa-2x"></i></a>
+            </nav>
+            <div class="mt-auto flex flex-col items-center text-center">
+                 <img id="user-avatar" src="https://placehold.co/40x40/E2E8F0/4A5568?text=U" class="rounded-full mb-2">
+                 <span id="operator-name" class="text-xs font-medium"></span>
+                 <button id="logout-btn" class="text-xs text-gray-400 hover:text-white">Sair</button>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="flex-1 p-8 overflow-y-auto h-screen">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">Dashboard Operacional</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                    <div class="kpi-card bg-white p-6 rounded-lg shadow-md text-center">
+                        <i class="fa-solid fa-boxes-stacked text-3xl text-blue-500 mb-3"></i>
+                        <p class="text-gray-500 text-sm">Total de SKUs</p>
+                        <p id="kpi-total-skus" class="text-3xl font-bold">0</p>
+                    </div>
+                    <div class="kpi-card bg-white p-6 rounded-lg shadow-md text-center">
+                        <i class="fa-solid fa-clipboard-list text-3xl text-orange-500 mb-3"></i>
+                        <p class="text-gray-500 text-sm">Pedidos Pendentes</p>
+                        <p id="kpi-pending-orders" class="text-3xl font-bold">0</p>
+                    </div>
+                    <div class="kpi-card bg-white p-6 rounded-lg shadow-md text-center">
+                        <i class="fa-solid fa-percent text-3xl text-green-500 mb-3"></i>
+                        <p class="text-gray-500 text-sm">Acuracidade Inventário</p>
+                        <p id="kpi-inventory-accuracy" class="text-3xl font-bold">N/A</p>
+                    </div>
+                    <div class="kpi-card bg-white p-6 rounded-lg shadow-md text-center">
+                        <i class="fa-solid fa-stopwatch text-3xl text-purple-500 mb-3"></i>
+                        <p class="text-gray-500 text-sm">Tempo Médio Separação</p>
+                        <p id="kpi-avg-picking-time" class="text-3xl font-bold">N/A</p>
+                    </div>
+                     <div class="kpi-card bg-white p-6 rounded-lg shadow-md text-center">
+                        <i class="fa-solid fa-euro-sign text-3xl text-teal-500 mb-3"></i>
+                        <p class="text-gray-500 text-sm">Custo Médio Frete</p>
+                        <p id="kpi-avg-shipping-cost" class="text-3xl font-bold">N/A</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Pedidos para Separação</h2>
+                        <div id="dashboard-picking-list" class="space-y-3 max-h-80 overflow-y-auto">
+                            <p class="text-gray-500">Nenhum pedido aguardando separação.</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Log de Atividades Recentes</h2>
+                        <div id="activity-log" class="space-y-3 max-h-80 overflow-y-auto">
+                           <p class="text-gray-500">Nenhuma atividade recente.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Tasks View -->
+            <div id="tasks-view" class="view hidden">
+                 <h1 class="text-3xl font-bold text-gray-800 mb-6">Minhas Tarefas</h1>
+                 <div id="my-tasks-list" class="space-y-4">
+                     <p class="text-gray-500 bg-white p-6 rounded-lg shadow-md">Nenhuma tarefa atribuída a si de momento.</p>
+                 </div>
+            </div>
+
+            <!-- Inbound View -->
+            <div id="inbound-view" class="view hidden">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">Logística de Entrada (Inbound)</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Registar Ordem de Recebimento (ASN)</h2>
+                        <form id="receive-form" class="space-y-4">
+                            <div>
+                                <label for="asn-id" class="block text-sm font-medium text-gray-700">ID da Ordem (ASN)</label>
+                                <input type="text" id="asn-id" class="w-full p-2 border rounded mt-1" required>
+                            </div>
+                            <div>
+                                <label for="supplier" class="block text-sm font-medium text-gray-700">Fornecedor</label>
+                                <input type="text" id="supplier" class="w-full p-2 border rounded mt-1" required>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition disabled:opacity-50">Criar Ordem de Recebimento</button>
+                        </form>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Ordens de Recebimento Pendentes</h2>
+                        <div id="pending-asn-list" class="space-y-3 max-h-80 overflow-y-auto">
+                            <p class="text-gray-500">Nenhuma ordem pendente.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory View -->
+             <div id="inventory-view" class="view hidden">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">Gestão de Inventário</h1>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Stock Atual</h2>
+                        <div>
+                            <button id="create-cycle-count-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition mr-2">Criar Contagem Cíclica</button>
+                            <button id="add-product-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Adicionar Novo Produto</button>
+                        </div>
+                    </div>
+                    <div class="max-h-[45vh] overflow-y-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-200 sticky top-0">
+                                <tr>
+                                    <th class="p-3">SKU</th><th class="p-3">Produto</th><th class="p-3">Giro</th>
+                                    <th class="p-3 text-right">Quantidade</th><th class="p-3">Localização</th><th class="p-3">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Tarefas de Contagem Cíclica</h2>
+                    <div id="cycle-count-tasks-list" class="max-h-64 overflow-y-auto">
+                        <p class="text-gray-500">Nenhuma tarefa de contagem ativa.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outbound View -->
+            <div id="outbound-view" class="view hidden">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">Logística de Saída (Outbound)</h1>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Criar Pedido de Venda</h2>
+                        <form id="order-form" class="space-y-4">
+                            <div>
+                                <label for="customer-name" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+                                <input type="text" id="customer-name" class="w-full p-2 border rounded mt-1" required>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded hover:bg-indigo-700 transition disabled:opacity-50">Criar Pedido de Venda</button>
+                        </form>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+                        <h2 class="text-xl font-semibold mb-4">Pedidos de Venda em Aberto</h2>
+                        <div id="pending-orders-list" class="space-y-3 max-h-96 overflow-y-auto">
+                             <p class="text-gray-500">Nenhum pedido em aberto.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TMS View -->
+             <div id="tms-view" class="view hidden">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">Módulo de Transporte (TMS)</h1>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Histórico de Expedições</h2>
+                    <div class="max-h-[75vh] overflow-y-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-200 sticky top-0">
+                                <tr>
+                                    <th class="p-3">Pedido</th><th class="p-3">Cliente</th><th class="p-3">Transportadora</th>
+                                    <th class="p-3">Custo Frete</th><th class="p-3">Rastreio</th><th class="p-3">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tms-history-table-body">
+                                <tr><td colspan="6" class="text-center p-4 text-gray-500">Nenhuma expedição registada.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports View -->
+             <div id="reports-view" class="view hidden">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">Relatórios e Inteligência Operacional</h1>
+                <p class="mb-8 text-gray-600">Análise de performance da operação e do inventário. <span id="reports-last-updated" class="text-xs"></span></p>
+
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-xl font-semibold mb-4">Desempenho dos Operadores (LMS)</h2>
+                    <div id="operator-performance-report" class="overflow-x-auto">
+                        <p class="text-gray-500">A gerar relatório...</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Análise de Inventário - Curva ABC</h2>
+                    <div id="inventory-abc-analysis" class="space-y-4">
+                        <p class="text-gray-500">A gerar análise...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Genérica -->
+    <div id="modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-[100]">
+       <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col transform scale-95">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 id="modal-title" class="text-xl font-bold">Título da Modal</h2>
+                <button id="modal-close-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div id="modal-body" class="p-6 overflow-y-auto">
+                <p>Conteúdo da modal...</p>
+            </div>
+            <div id="modal-footer" class="p-4 bg-gray-50 border-t text-right space-x-2">
+                <button id="modal-cancel-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Cancelar</button>
+                <button id="modal-confirm-btn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, getDoc, onSnapshot, updateDoc, setDoc, deleteDoc, query, where, serverTimestamp, orderBy, limit, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- CONFIGURAÇÃO FIREBASE COM AS SUAS CREDENCIAIS ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7J_J7JCagM65E5qkl1z-Kn2V360ldmdg",
+            authDomain: "minhas-credenciais-firebase.firebaseapp.com",
+            projectId: "minhas-credenciais-firebase",
+            storageBucket: "minhas-credenciais-firebase.appspot.com",
+            messagingSenderId: "90146495031",
+            appId: "1:90146495031:web:04bdab47de65f7444cbdb2",
+            measurementId: "G-PRWH7BPV5E"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- COLLECTION REFERENCES ---
+        const inventoryCol = collection(db, 'inventory');
+        const purchaseOrdersCol = collection(db, 'purchaseOrders');
+        const salesOrdersCol = collection(db, 'salesOrders');
+        const activityLogCol = collection(db, 'activityLog');
+        const operatorsCol = collection(db, 'operators');
+        const performanceLogCol = collection(db, 'performanceLog');
+        const cycleCountTasksCol = collection(db, 'cycleCountTasks');
+        const inventoryStatsRef = doc(db, 'stats', 'inventory');
+
+        // --- GLOBAL STATE ---
+        let currentOperator = null;
+        let confirmCallback = null;
+        let activeListeners = [];
+        let cachedSalesOrders = [];
+        let cachedCycleCountTasks = [];
+
+
+        // --- OPERATOR & LOGIN MANAGEMENT ---
+        async function loadOperators() {
+            const operatorListDiv = document.getElementById('operator-list');
+            onSnapshot(query(operatorsCol, orderBy('name')), (snapshot) => {
+                if (snapshot.empty) {
+                    operatorListDiv.innerHTML = '<p class="text-gray-500">Nenhum operador registado.</p>';
+                } else {
+                    operatorListDiv.innerHTML = snapshot.docs.map(doc => {
+                        const operator = doc.data();
+                        return `<button data-id="${doc.id}" data-name="${operator.name}" class="operator-btn w-full text-left p-3 bg-gray-100 hover:bg-indigo-100 rounded-lg transition">${operator.name}</button>`;
+                    }).join('');
+                }
+            });
+        }
+
+        document.getElementById('operator-list').addEventListener('click', (e) => {
+            if (e.target.classList.contains('operator-btn')) {
+                login({ id: e.target.dataset.id, name: e.target.dataset.name });
+            }
+        });
+        
+        document.getElementById('add-operator-link').addEventListener('click', () => {
+             const modalContent = `
+                <form id="add-operator-form" class="space-y-4">
+                    <div>
+                        <label for="new-operator-name" class="block text-sm font-medium text-gray-700">Nome do Novo Operador</label>
+                        <input type="text" id="new-operator-name" class="w-full p-2 border rounded mt-1" required>
+                    </div>
+                </form>
+            `;
+            openModal('Adicionar Novo Operador', modalContent, handleAddOperator, 'Adicionar');
+        });
+
+        async function handleAddOperator() {
+            const nameInput = document.getElementById('new-operator-name');
+            const name = nameInput.value.trim();
+            if (name) {
+                disableModalConfirmButton('A adicionar...');
+                try {
+                    await addDoc(operatorsCol, { name });
+                    closeModal();
+                } catch (error) {
+                    console.error("Erro ao adicionar operador:", error);
+                    showError('Erro Inesperado', 'Não foi possível adicionar o operador.');
+                } finally {
+                    enableModalConfirmButton('Adicionar');
+                }
+            } else {
+                 showError('Erro de Validação', 'O nome do operador não pode estar em branco.');
+            }
+        }
+        
+        document.getElementById('logout-btn').addEventListener('click', () => {
+             document.getElementById('app-container').classList.add('hidden');
+             document.getElementById('operator-login-screen').classList.remove('hidden');
+             currentOperator = null;
+             // Unsubscribe from all listeners
+             activeListeners.forEach(unsubscribe => unsubscribe());
+             activeListeners = [];
+             cachedSalesOrders = [];
+             cachedCycleCountTasks = [];
+        });
+
+        function login(operator) {
+            currentOperator = operator;
+            document.getElementById('operator-name').textContent = operator.name;
+            const initials = operator.name.split(' ').map(n => n[0]).join('').substring(0,2);
+            document.getElementById('user-avatar').src = `https://placehold.co/40x40/E2E8F0/4A5568?text=${initials}`;
+            document.getElementById('operator-login-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            showView('dashboard');
+            loadAllData();
+        }
+
+        // --- VIEW & DATA MANAGEMENT ---
+        window.showView = (viewId) => {
+            document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
+            document.getElementById(`${viewId}-view`).classList.remove('hidden');
+            if (viewId === 'reports') generateReports();
+        };
+        
+        function loadAllData() {
+            if (!currentOperator) return;
+
+            // Clear previous listeners to avoid duplicates
+            activeListeners.forEach(unsubscribe => unsubscribe());
+            activeListeners = [];
+            
+            const listeners = [
+                // Inventory & Products
+                onSnapshot(query(inventoryCol, orderBy("sku")), snapshot => updateInventoryTable(snapshot.docs)),
+                onSnapshot(inventoryCol, snapshot => { document.getElementById('kpi-total-skus').textContent = snapshot.size; }),
+                
+                // Inbound
+                onSnapshot(query(purchaseOrdersCol, orderBy("createdAt", "desc")), snapshot => updatePendingAsnList(snapshot.docs)),
+                
+                // Outbound & Tasks (Combined for efficiency)
+                onSnapshot(query(salesOrdersCol, orderBy("createdAt", "desc")), snapshot => {
+                    const salesOrders = snapshot.docs;
+                    cachedSalesOrders = salesOrders; // Cache for use by other listeners
+                    updatePendingOrdersList(salesOrders);
+                    updateDashboardPickingList(salesOrders);
+                    updateMyTasks(salesOrders, cachedCycleCountTasks);
+                    
+                    const shippedOrders = salesOrders.filter(d => d.data().status === 'Expedido');
+                    updateTmsHistory(shippedOrders);
+                    updateAverageShippingCostKpi(shippedOrders);
+                    
+                    const pendingOrdersCount = salesOrders.length - shippedOrders.length;
+                    document.getElementById('kpi-pending-orders').textContent = pendingOrdersCount;
+                }),
+
+                // Cycle Count & Tasks
+                onSnapshot(query(cycleCountTasksCol, orderBy("createdAt", "desc")), snapshot => {
+                    const cycleTasks = snapshot.docs;
+                    cachedCycleCountTasks = cycleTasks; // Cache for use by other listeners
+                    updateCycleCountTasksList(cycleTasks);
+                    updateMyTasks(cachedSalesOrders, cycleTasks);
+                }),
+                
+                // Activity & Performance
+                onSnapshot(query(activityLogCol, orderBy("timestamp", "desc"), limit(10)), snapshot => updateActivityLog(snapshot.docs)),
+                onSnapshot(performanceLogCol, snapshot => updateAvgPickingTime(snapshot.docs)),
+                onSnapshot(inventoryStatsRef, (doc) => updateInventoryAccuracyKpi(doc.data())),
+            ];
+            
+            activeListeners.push(...listeners);
+        }
+
+        async function logActivity(message, details = {}) {
+            try {
+                await addDoc(activityLogCol, { message, operator: currentOperator.name, details, timestamp: serverTimestamp() });
+            } catch (error) {
+                console.error("Falha ao registar atividade:", error);
+            }
+        }
+
+        // --- DASHBOARD ---
+        function updateActivityLog(docs) {
+            const logDiv = document.getElementById('activity-log');
+            if(docs.length === 0) {
+                logDiv.innerHTML = `<p class="text-gray-500">Nenhuma atividade recente.</p>`;
+                return;
+            };
+            logDiv.innerHTML = docs.map(doc => {
+                const log = doc.data();
+                return `<div class="text-sm border-l-2 pl-2 border-gray-200">
+                            <p class="font-medium">${log.message}</p>
+                            <p class="text-xs text-gray-500">${log.operator} - ${log.timestamp?.toDate().toLocaleString('pt-PT')}</p>
+                        </div>`;
+            }).join('');
+        }
+        
+        function updateAvgPickingTime(docs) {
+            const kpiElement = document.getElementById('kpi-avg-picking-time');
+            if (docs.length === 0) { kpiElement.textContent = 'N/A'; return; }
+            const totalDuration = docs.reduce((sum, doc) => sum + doc.data().duration, 0);
+            const avgDuration = totalDuration / docs.length;
+            kpiElement.textContent = formatDuration(avgDuration);
+        }
+
+        function updateDashboardPickingList(docs) {
+             const listDiv = document.getElementById('dashboard-picking-list');
+             const toPick = docs.filter(doc => doc.data().status === 'Aguardando Separação');
+             if (toPick.length === 0) {
+                 listDiv.innerHTML = `<p class="text-gray-500">Nenhum pedido aguardando separação.</p>`;
+                 return;
+             }
+             listDiv.innerHTML = toPick.map(doc => {
+                 const order = doc.data();
+                 return `<div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                             <div><p class="font-bold">${order.orderId}</p><p class="text-xs text-gray-600">${order.customer}</p></div>
+                             <p class="text-sm font-medium">${order.items.length} item(s)</p>
+                         </div>`;
+             }).join('');
+        }
+
+        // --- INVENTORY & PRODUCTS ---
+        const getAbcClass = (salesCount) => {
+            if (salesCount > 50) return { class: 'A', color: 'bg-red-200 text-red-800', locationPrefix: 'A' };
+            if (salesCount > 10) return { class: 'B', color: 'bg-yellow-200 text-yellow-800', locationPrefix: 'B' };
+            return { class: 'C', color: 'bg-green-200 text-green-800', locationPrefix: 'C' };
+        };
+
+        function updateInventoryTable(docs) {
+            const tableBody = document.getElementById('inventory-table-body');
+            if(docs.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-500">O inventário está vazio.</td></tr>`;
+                return;
+            }
+            tableBody.innerHTML = docs.map(doc => {
+                const item = doc.data();
+                const abc = getAbcClass(item.salesCount || 0);
+                return `<tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-mono text-sm">${item.sku}</td>
+                    <td class="p-3 font-medium">${item.name}</td>
+                    <td class="p-3"><span class="abc-badge ${abc.color}">${abc.class}</span></td>
+                    <td class="p-3 text-right font-bold">${item.quantity}</td>
+                    <td class="p-3 font-mono text-sm">${item.location}</td>
+                    <td class="p-3"><button onclick="window.deleteProduct('${doc.id}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>`;
+            }).join('');
+        }
+        
+        document.getElementById('add-product-btn').addEventListener('click', () => {
+             openModal('Adicionar Novo Produto', `
+                 <form id="add-product-form" class="space-y-4">
+                     <div><label class="block">SKU</label><input type="text" id="product-sku" class="w-full p-2 border rounded" required></div>
+                     <div><label class="block">Nome do Produto</label><input type="text" id="product-name" class="w-full p-2 border rounded" required></div>
+                     <div><label class="block">Quantidade Inicial</label><input type="number" id="product-qty" class="w-full p-2 border rounded" value="0" required></div>
+                     <div><label class="block">Localização</label><input type="text" id="product-loc" class="w-full p-2 border rounded" placeholder="Ex: A-01-01" required></div>
+                     <div><label class="block">Peso (kg)</label><input type="number" step="0.01" id="product-weight" class="w-full p-2 border rounded" value="0" required></div>
+                     <div><label class="block">Volume (m³)</label><input type="number" step="0.001" id="product-volume" class="w-full p-2 border rounded" value="0" required></div>
+                 </form>
+             `, handleAddProduct, 'Adicionar');
+        });
+
+        async function handleAddProduct() {
+            disableModalConfirmButton('A adicionar...');
+            try {
+                const sku = document.getElementById('product-sku').value.trim().toUpperCase();
+                if(!sku) {
+                    showError("Erro de Validação", "O campo SKU é obrigatório.");
+                    return;
+                }
+                const docRef = doc(db, 'inventory', sku);
+                const docSnap = await getDoc(docRef);
+                if(docSnap.exists()) {
+                    showError("Erro de Duplicação", "Já existe um produto com este SKU.");
+                    return;
+                }
+                await setDoc(docRef, {
+                    sku,
+                    name: document.getElementById('product-name').value,
+                    quantity: parseInt(document.getElementById('product-qty').value, 10),
+                    location: document.getElementById('product-loc').value.toUpperCase(),
+                    weight: parseFloat(document.getElementById('product-weight').value),
+                    volume: parseFloat(document.getElementById('product-volume').value),
+                    salesCount: 0
+                });
+                await logActivity(`Novo produto adicionado: ${sku}`);
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao adicionar produto:", error);
+                showError("Erro Inesperado", "Não foi possível adicionar o produto. Verifique a consola para mais detalhes.");
+            } finally {
+                enableModalConfirmButton('Adicionar');
+            }
+        }
+
+        window.deleteProduct = (docId) => {
+            openModal(`Apagar Produto ${docId}`, `<p>Tem a certeza que deseja apagar este produto do inventário? Esta ação não pode ser desfeita.</p>`, async () => {
+                disableModalConfirmButton('A apagar...');
+                try {
+                    await deleteDoc(doc(db, 'inventory', docId));
+                    await logActivity(`Produto removido: ${docId}`);
+                    closeModal();
+                } catch (error) {
+                    console.error("Erro ao apagar produto:", error);
+                    showError("Erro Inesperado", "Não foi possível apagar o produto.");
+                } finally {
+                    enableModalConfirmButton('Apagar');
+                }
+            }, 'Apagar');
+        };
+
+        // --- INBOUND (RECEIVING) ---
+        document.getElementById('receive-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>A criar...';
+
+            try {
+                const asnId = document.getElementById('asn-id').value;
+                const supplier = document.getElementById('supplier').value;
+                if (!asnId || !supplier) {
+                    showError("Erro de Validação", "Todos os campos são obrigatórios.");
+                    return;
+                }
+                await addDoc(purchaseOrdersCol, { asnId, supplier, status: 'Pendente', createdAt: serverTimestamp(), items: [] });
+                await logActivity(`Ordem de recebimento ${asnId} criada.`);
+                e.target.reset();
+            } catch (error) {
+                console.error("Erro ao criar ordem de recebimento:", error);
+                showError('Erro Inesperado', 'Não foi possível criar a ordem de recebimento.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            }
+        });
+
+        function updatePendingAsnList(docs) {
+            const listDiv = document.getElementById('pending-asn-list');
+            const pending = docs.filter(d => d.data().status !== 'Finalizado');
+            if (pending.length === 0) {
+                listDiv.innerHTML = `<p class="text-gray-500">Nenhuma ordem pendente.</p>`;
+                return;
+            }
+            listDiv.innerHTML = pending.map(doc => {
+                const po = doc.data();
+                return `<div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="font-bold">${po.asnId} <span class="text-xs font-normal text-gray-500">- ${po.supplier}</span></p>
+                    <p class="text-xs">Itens: ${po.items.length}</p>
+                    <div class="mt-2">
+                        <button onclick="window.addAsnItem('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Adicionar Item</button>
+                        <button onclick="window.startPutaway('${doc.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600 ${po.items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${po.items.length === 0 ? 'disabled' : ''}>Iniciar Arrumação</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.addAsnItem = async (docId) => {
+            try {
+                const allSkusSnapshot = await getDocs(query(inventoryCol, orderBy('sku')));
+                const options = allSkusSnapshot.docs.map(d => `<option value="${d.id}">${d.id} - ${d.data().name}</option>`).join('');
+                if(allSkusSnapshot.empty){
+                    showError("Inventário Vazio", "Não há produtos no inventário para adicionar.");
+                    return;
+                }
+                openModal('Adicionar Item ao Recebimento', `
+                    <form id="add-asn-item-form" class="space-y-4">
+                        <div>
+                            <label>SKU</label>
+                            <select id="asn-item-sku" class="w-full p-2 border rounded">${options}</select>
+                        </div>
+                        <div>
+                            <label>Quantidade Recebida</label>
+                            <input type="number" id="asn-item-qty" class="w-full p-2 border rounded" required min="1">
+                        </div>
+                    </form>
+                `, () => handleAddAsnItem(docId), 'Adicionar');
+            } catch (error) {
+                console.error("Erro ao carregar SKUs:", error);
+                showError("Erro", "Não foi possível carregar a lista de produtos.");
+            }
+        };
+
+        async function handleAddAsnItem(docId) {
+            disableModalConfirmButton('A adicionar...');
+            try {
+                const poDoc = await getDoc(doc(db, 'purchaseOrders', docId));
+                if (!poDoc.exists()) {
+                    showError("Erro", "Ordem de recebimento não encontrada.");
+                    return;
+                }
+                const po = poDoc.data();
+                const sku = document.getElementById('asn-item-sku').value;
+                const quantity = parseInt(document.getElementById('asn-item-qty').value, 10);
+                if (isNaN(quantity) || quantity <= 0) {
+                    showError("Erro de Validação", "Por favor, insira uma quantidade válida.");
+                    return;
+                }
+                
+                const existingItem = po.items.find(item => item.sku === sku);
+                let newItems;
+                if (existingItem) {
+                    newItems = po.items.map(item => item.sku === sku ? { ...item, quantity: item.quantity + quantity } : item);
+                } else {
+                    newItems = [...po.items, { sku, quantity }];
+                }
+                await updateDoc(doc(db, 'purchaseOrders', docId), { items: newItems });
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao adicionar item ASN:", error);
+                showError("Erro", "Não foi possível adicionar o item à ordem.");
+            } finally {
+                enableModalConfirmButton('Adicionar');
+            }
+        }
+
+        window.startPutaway = async (docId) => {
+            try {
+                const poDoc = await getDoc(doc(db, 'purchaseOrders', docId));
+                if(!poDoc.exists()) {
+                    showError("Erro", "Ordem de recebimento não encontrada.");
+                    return;
+                }
+                const po = poDoc.data();
+                
+                const putawayListHtml = await Promise.all(po.items.map(async item => {
+                    const invDoc = await getDoc(doc(db, 'inventory', item.sku));
+                    const invData = invDoc.exists() ? invDoc.data() : {};
+                    const abc = getAbcClass(invData.salesCount || 0);
+                    const suggestedLocation = invData.location || `${abc.locationPrefix}-01-01`;
+                    return `<tr class="border-b">
+                                <td class="p-2 font-mono text-sm">${item.sku}</td>
+                                <td class="p-2 text-right">${item.quantity}</td>
+                                <td class="p-2 text-green-600 font-medium">${suggestedLocation}</td>
+                            </tr>`;
+                }));
+
+                openModal(`Arrumação Inteligente (ASN: ${po.asnId})`, `
+                    <p class="mb-4">Confirme a arrumação dos itens nos locais sugeridos pelo sistema (baseado na curva ABC).</p>
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-100"><tr><th class="p-2">SKU</th><th class="p-2 text-right">Qtd.</th><th class="p-2">Local Sugerido</th></tr></thead>
+                        <tbody>${putawayListHtml.join('')}</tbody>
+                    </table>
+                `, () => handleConfirmPutaway(docId, po.items), 'Confirmar e Finalizar');
+            } catch (error) {
+                console.error("Erro ao iniciar arrumação:", error);
+                showError("Erro", "Não foi possível gerar a lista de arrumação.");
+            }
+        };
+
+        async function handleConfirmPutaway(docId, items) {
+            disableModalConfirmButton('A finalizar...');
+            try {
+                const poRef = doc(db, 'purchaseOrders', docId);
+                await runTransaction(db, async (transaction) => {
+                    for (const item of items) {
+                        const invRef = doc(db, 'inventory', item.sku);
+                        const invDoc = await transaction.get(invRef);
+                        if(invDoc.exists()) {
+                            const newQty = (invDoc.data().quantity || 0) + item.quantity;
+                            transaction.update(invRef, { quantity: newQty });
+                        }
+                    }
+                    transaction.update(poRef, { status: 'Finalizado' });
+                });
+                await logActivity(`Recebimento ${docId.substring(0,5)}... finalizado e stock atualizado.`);
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao confirmar arrumação:", error);
+                showError("Erro de Transação", "Não foi possível finalizar o recebimento. O stock não foi alterado.");
+            } finally {
+                enableModalConfirmButton('Confirmar e Finalizar');
+            }
+        }
+
+        // --- OUTBOUND (SHIPPING) ---
+        document.getElementById('order-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>A criar...';
+
+            try {
+                const customer = document.getElementById('customer-name').value;
+                if (!customer) {
+                    showError("Erro de Validação", "O nome do cliente é obrigatório.");
+                    return;
+                }
+                const orderId = `SO-${Date.now()}`;
+                await addDoc(salesOrdersCol, { 
+                    orderId, 
+                    customer, 
+                    status: 'Aguardando Separação', 
+                    createdAt: serverTimestamp(), 
+                    items: [] 
+                });
+                await logActivity(`Pedido ${orderId} criado para ${customer}.`);
+                e.target.reset();
+            } catch (error) {
+                console.error("Erro ao criar pedido:", error);
+                showError("Erro Inesperado", "Não foi possível criar o pedido de venda.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            }
+        });
+
+        function updatePendingOrdersList(docs) {
+            const listDiv = document.getElementById('pending-orders-list');
+            const openOrders = docs.filter(d => d.data().status !== 'Expedido');
+            if (openOrders.length === 0) {
+                listDiv.innerHTML = `<p class="text-gray-500">Nenhum pedido em aberto.</p>`;
+                return;
+            }
+            listDiv.innerHTML = openOrders.map(doc => {
+                 const order = doc.data();
+                 const statusColors = {
+                    'Aguardando Separação': 'bg-red-200 text-red-800',
+                    'Em Separação': 'bg-yellow-200 text-yellow-800',
+                    'Embalado': 'bg-blue-200 text-blue-800',
+                    'Aguardando Expedição': 'bg-purple-200 text-purple-800',
+                 };
+                 let actionsHtml = '';
+                 if (order.status === 'Aguardando Separação') {
+                    actionsHtml = `<button onclick="window.addOrderItem('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Adicionar Item</button>
+                                   <button onclick="window.assignOrderToOperator('${doc.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600 ${order.items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${order.items.length === 0 ? 'disabled' : ''}>Atribuir Operador</button>`;
+                 }
+                 if (order.status === 'Aguardando Expedição') {
+                      actionsHtml = `<button onclick="window.openTmsModal('${doc.id}')" class="bg-teal-500 text-white px-2 py-1 text-xs rounded hover:bg-teal-600">Expedir (TMS)</button>`;
+                 }
+
+                 return `<div class="bg-gray-50 p-3 rounded-lg">
+                             <div class="flex justify-between items-start">
+                                 <div>
+                                     <p class="font-bold">${order.orderId} <span class="text-xs font-normal text-gray-500">- ${order.customer}</span></p>
+                                     <p class="text-xs">Itens: ${order.items.map(i => `${i.sku} (${i.quantity})`).join(', ') || 'Nenhum'}</p>
+                                     ${order.assignedToName ? `<p class="text-xs text-gray-600">Atribuído a: <strong>${order.assignedToName}</strong></p>` : ''}
+                                 </div>
+                                 <span class="status-badge ${statusColors[order.status]}">${order.status}</span>
+                             </div>
+                             <div class="mt-2 text-right">${actionsHtml}</div>
+                         </div>`;
+            }).join('');
+        }
+
+        window.addOrderItem = async (orderId) => {
+            try {
+                const allSkusSnapshot = await getDocs(query(inventoryCol, where('quantity', '>', 0), orderBy('quantity'), orderBy('sku')));
+                if (allSkusSnapshot.empty) {
+                    showError("Sem Stock", "Não há produtos com stock disponível para adicionar.");
+                    return;
+                }
+                const options = allSkusSnapshot.docs.map(d => `<option value="${d.id}" data-loc="${d.data().location}">${d.id} - ${d.data().name} (Disp: ${d.data().quantity})</option>`).join('');
+                openModal('Adicionar Item ao Pedido', `
+                    <form id="add-order-item-form" class="space-y-4">
+                        <div><label>SKU</label><select id="order-item-sku" class="w-full p-2 border rounded">${options}</select></div>
+                        <div><label>Quantidade</label><input type="number" id="order-item-qty" class="w-full p-2 border rounded" required min="1"></div>
+                    </form>
+                `, () => handleAddOrderItem(orderId), 'Adicionar');
+            } catch (error) {
+                console.error("Erro ao carregar SKUs para pedido:", error);
+                showError("Erro", "Não foi possível carregar a lista de produtos.");
+            }
+        };
+
+        async function handleAddOrderItem(orderId) {
+            disableModalConfirmButton('A adicionar...');
+            try {
+                const orderRef = doc(db, 'salesOrders', orderId);
+                const select = document.getElementById('order-item-sku');
+                const sku = select.value;
+                const location = select.options[select.selectedIndex].dataset.loc;
+                const quantity = parseInt(document.getElementById('order-item-qty').value, 10);
+
+                if (isNaN(quantity) || quantity <= 0) {
+                    showError("Erro de Validação", "A quantidade deve ser um número maior que zero.");
+                    return;
+                }
+                
+                const invDoc = await getDoc(doc(db, 'inventory', sku));
+                if (!invDoc.exists() || invDoc.data().quantity < quantity) {
+                    showError("Erro de Stock", "Quantidade insuficiente em stock.");
+                    return;
+                }
+
+                const orderDoc = await getDoc(orderRef);
+                const order = orderDoc.data();
+                const existingItem = order.items.find(item => item.sku === sku);
+                let newItems;
+                if (existingItem) {
+                    newItems = order.items.map(item => item.sku === sku ? { ...item, quantity: item.quantity + quantity } : item);
+                } else {
+                    newItems = [...order.items, { sku, quantity, location }];
+                }
+                await updateDoc(orderRef, { items: newItems });
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao adicionar item ao pedido:", error);
+                showError("Erro", "Não foi possível adicionar o item ao pedido.");
+            } finally {
+                enableModalConfirmButton('Adicionar');
+            }
+        }
+        
+        window.assignOrderToOperator = async (orderId) => {
+            try {
+                const opsSnapshot = await getDocs(operatorsCol);
+                if (opsSnapshot.empty) {
+                    showError("Sem Operadores", "Não há operadores registados para atribuir a tarefa.");
+                    return;
+                }
+                const options = opsSnapshot.docs.map(d => `<option value="${d.id}" data-name="${d.data().name}">${d.data().name}</option>`).join('');
+                openModal('Atribuir Pedido a Operador', `
+                    <p>Selecione o operador para a tarefa de separação.</p>
+                    <select id="operator-select" class="w-full p-2 border rounded mt-2">${options}</select>
+                `, () => handleAssignOrder(orderId), 'Atribuir');
+            } catch (error) {
+                console.error("Erro ao carregar operadores:", error);
+                showError("Erro", "Não foi possível carregar a lista de operadores.");
+            }
+        };
+
+        async function handleAssignOrder(orderId) {
+            disableModalConfirmButton('A atribuir...');
+            try {
+                const select = document.getElementById('operator-select');
+                const operatorId = select.value;
+                const operatorName = select.options[select.selectedIndex].dataset.name;
+                await updateDoc(doc(db, 'salesOrders', orderId), {
+                    status: 'Em Separação',
+                    assignedTo: operatorId,
+                    assignedToName: operatorName
+                });
+                await logActivity(`Pedido ${orderId.substring(0,5)}... atribuído a ${operatorName}.`);
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao atribuir pedido:", error);
+                showError("Erro", "Não foi possível atribuir o pedido.");
+            } finally {
+                enableModalConfirmButton('Atribuir');
+            }
+        }
+        
+        window.startPickingTask = async (orderId) => {
+            try {
+                const orderDoc = await getDoc(doc(db, 'salesOrders', orderId));
+                if (!orderDoc.exists()) {
+                    showError("Erro", "Pedido não encontrado.");
+                    return;
+                }
+                const order = orderDoc.data();
+                const sortedItems = [...order.items].sort((a,b) => a.location.localeCompare(b.location));
+                
+                const listHtml = sortedItems.map(item => `
+                    <div class="p-3 border-b flex justify-between">
+                        <span><i class="fa-solid fa-location-dot mr-2"></i><strong>${item.location}</strong></span>
+                        <span>${item.sku}</span>
+                        <span>Qtd: <strong>${item.quantity}</strong></span>
+                    </div>
+                `).join('');
+
+                openModal(`Lista de Separação - ${order.orderId}`, `
+                    <p class="mb-4">Recolha os seguintes itens na ordem apresentada para uma rota otimizada.</p>
+                    <div class="space-y-2 max-h-80 overflow-y-auto">${listHtml}</div>
+                `, () => handleCompletePicking(orderId, Date.now()), 'Separação Concluída');
+            } catch (error) {
+                console.error("Erro ao iniciar separação:", error);
+                showError("Erro", "Não foi possível gerar a lista de separação.");
+            }
+        };
+
+        async function handleCompletePicking(orderId, startTime) {
+            disableModalConfirmButton('A completar...');
+            try {
+                const endTime = Date.now();
+                const durationInSeconds = (endTime - startTime) / 1000;
+                
+                await addDoc(performanceLogCol, {
+                    orderId,
+                    operatorName: currentOperator.name,
+                    duration: durationInSeconds,
+                    timestamp: serverTimestamp()
+                });
+
+                await updateDoc(doc(db, 'salesOrders', orderId), { status: 'Embalado' });
+                await logActivity(`Separação do pedido ${orderId.substring(0,5)}... concluída em ${formatDuration(durationInSeconds)}.`);
+                closeModal(); // Fecha a modal de picking
+                startPacking(orderId); // Abre a de packing
+            } catch (error) {
+                console.error("Erro ao completar separação:", error);
+                showError("Erro", "Não foi possível completar a tarefa de separação.");
+            } finally {
+                enableModalConfirmButton('Separação Concluída');
+            }
+        }
+        
+        window.startPacking = async (orderId) => {
+            try {
+                const orderDoc = await getDoc(doc(db, 'salesOrders', orderId));
+                 if (!orderDoc.exists()) {
+                    showError("Erro", "Pedido não encontrado.");
+                    return;
+                }
+                const order = orderDoc.data();
+                
+                const invPromises = order.items.map(item => getDoc(doc(db, 'inventory', item.sku)));
+                const invDocs = await Promise.all(invPromises);
+                
+                let totalWeight = 0;
+                let totalVolume = 0;
+                for(let i = 0; i < order.items.length; i++) {
+                    if (invDocs[i].exists()) {
+                        totalWeight += (invDocs[i].data().weight || 0) * order.items[i].quantity;
+                        totalVolume += (invDocs[i].data().volume || 0) * order.items[i].quantity;
+                    }
+                }
+
+                const boxes = [
+                    { name: "Caixa P", volume: 0.015, dim: "20x30x25cm" },
+                    { name: "Caixa M", volume: 0.048, dim: "40x40x30cm" },
+                    { name: "Caixa G", volume: 0.125, dim: "50x50x50cm" }
+                ];
+                const suggestedBox = boxes.find(box => box.volume >= totalVolume) || boxes[boxes.length - 1];
+                
+                openModal(`Embalagem - Pedido ${order.orderId}`, `
+                    <div class="text-center space-y-4">
+                        <p>Com base no volume total dos itens (<strong>${totalVolume.toFixed(3)} m³</strong>), a embalagem sugerida é:</p>
+                        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
+                            <p class="font-bold text-xl">${suggestedBox.name}</p>
+                            <p class="text-sm">(${suggestedBox.dim})</p>
+                        </div>
+                    </div>
+                `, async () => {
+                    disableModalConfirmButton('A confirmar...');
+                    try {
+                        await updateDoc(doc(db, 'salesOrders', orderId), {
+                            status: 'Aguardando Expedição',
+                            packedBy: currentOperator.name,
+                            packageInfo: { suggestedBox: suggestedBox.name, totalWeight, totalVolume }
+                        });
+                        await logActivity(`Embalagem concluída para pedido ${order.orderId}.`);
+                        closeModal();
+                    } catch (error) {
+                        console.error("Erro ao confirmar embalagem:", error);
+                        showError("Erro", "Não foi possível confirmar a embalagem.");
+                    } finally {
+                        enableModalConfirmButton('Confirmar Embalagem');
+                    }
+                }, 'Confirmar Embalagem');
+            } catch (error) {
+                console.error("Erro ao iniciar embalagem:", error);
+                showError("Erro", "Não foi possível calcular os dados para a embalagem.");
+            }
+        };
+
+        // --- TMS (TRANSPORT MANAGEMENT) ---
+        window.openTmsModal = async (orderId) => {
+            try {
+                const orderDoc = await getDoc(doc(db, 'salesOrders', orderId));
+                 if (!orderDoc.exists()) {
+                    showError("Erro", "Pedido não encontrado.");
+                    return;
+                }
+                const order = orderDoc.data();
+                const { totalWeight, totalVolume } = order.packageInfo;
+
+                const modalContent = `
+                    <div class="space-y-4">
+                        <div class="flex justify-around text-center">
+                            <div><p class="text-sm text-gray-500">Peso Total</p><p class="font-bold text-lg">${totalWeight.toFixed(2)} kg</p></div>
+                            <div><p class="text-sm text-gray-500">Volume Total</p><p class="font-bold text-lg">${totalVolume.toFixed(3)} m³</p></div>
+                        </div>
+                        <button id="get-quotes-btn" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700">Obter Cotações de Frete</button>
+                        <div id="quotes-result" class="mt-4 space-y-2"></div>
+                    </div>
+                `;
+                openModal(`Integração TMS - Pedido ${order.orderId}`, modalContent, null, null);
+
+                document.getElementById('get-quotes-btn').addEventListener('click', () => simulateFreightQuote(orderId, totalWeight, totalVolume));
+            } catch (error) {
+                console.error("Erro ao abrir modal TMS:", error);
+                showError("Erro", "Não foi possível carregar dados do pedido para expedição.");
+            }
+        };
+
+        function simulateFreightQuote(orderId, weight, volume) {
+            const resultDiv = document.getElementById('quotes-result');
+            const getQuotesBtn = document.getElementById('get-quotes-btn');
+            getQuotesBtn.disabled = true;
+            resultDiv.innerHTML = `<p class="text-center p-4"><i class="fas fa-spinner fa-spin mr-2"></i>A contactar transportadoras...</p>`;
+            
+            setTimeout(() => {
+                const carriers = [
+                    { name: "Trans-Rápido", base: 10, kg_price: 1.5, m3_price: 50, days: 2 },
+                    { name: "Logi-Express", base: 15, kg_price: 1.2, m3_price: 65, days: 1 },
+                    { name: "Carga-Segura", base: 8, kg_price: 1.8, m3_price: 45, days: 3 }
+                ];
+
+                const quotesHtml = carriers.map(c => {
+                    const cost = c.base + (weight * c.kg_price) + (volume * c.m3_price);
+                    return `
+                        <div class="border p-3 rounded-lg flex justify-between items-center hover:bg-gray-50">
+                            <div>
+                                <p class="font-bold">${c.name}</p>
+                                <p class="text-sm text-gray-600">Prazo: ${c.days} dia(s)</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-lg text-green-600">€${cost.toFixed(2)}</p>
+                                <button onclick="window.selectCarrierAndShip('${orderId}', '${c.name}', ${cost.toFixed(2)})" class="bg-green-600 text-white px-3 py-1 text-sm rounded mt-1 hover:bg-green-700">Selecionar</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                resultDiv.innerHTML = quotesHtml;
+                getQuotesBtn.style.display = 'none'; // Hide button after getting quotes
+            }, 1500);
+        }
+
+        window.selectCarrierAndShip = async (orderId, carrier, cost) => {
+            // This is complex, so let's use the modal button disabling
+            disableModalConfirmButton('A expedir...');
+            const originalClose = document.getElementById('modal-close-btn').onclick;
+            document.getElementById('modal-close-btn').onclick = null; // Prevent closing during transaction
+
+            try {
+                 const orderRef = doc(db, 'salesOrders', orderId);
+                 const trackingNumber = `TRK${Date.now()}`.slice(0, 12);
+
+                 await runTransaction(db, async (transaction) => {
+                    const orderDoc = await transaction.get(orderRef);
+                    if (!orderDoc.exists()) { throw new Error("Pedido não encontrado."); }
+                    const order = orderDoc.data();
+
+                    for (const item of order.items) {
+                        const invRef = doc(db, 'inventory', item.sku);
+                        const invDoc = await transaction.get(invRef);
+                        if (invDoc.exists()) {
+                            const invData = invDoc.data();
+                            const newQty = invData.quantity - item.quantity;
+                            if (newQty < 0) { throw new Error(`Stock insuficiente para ${item.sku}!`); }
+                            transaction.update(invRef, { 
+                                quantity: newQty,
+                                salesCount: (invData.salesCount || 0) + item.quantity
+                            });
+                        } else {
+                            throw new Error(`Produto ${item.sku} não encontrado no inventário.`);
+                        }
+                    }
+                    
+                    transaction.update(orderRef, {
+                        status: 'Expedido',
+                        shippingCarrier: carrier,
+                        shippingCost: cost,
+                        trackingNumber: trackingNumber,
+                        shippedAt: serverTimestamp()
+                    });
+                 });
+                 
+                 await logActivity(`Pedido ${orderId.substring(0,5)}... expedido via ${carrier}. Custo: €${cost.toFixed(2)}`);
+                 closeModal();
+                 openModal('Expedição Concluída', `
+                     <p class="text-center">Etiqueta gerada com sucesso!</p>
+                     <div class="mt-4 bg-gray-100 p-4 rounded text-center">
+                         <p>Transportadora: <strong>${carrier}</strong></p>
+                         <p>Rastreio: <strong>${trackingNumber}</strong></p>
+                     </div>
+                 `, closeModal, 'Fechar');
+            } catch (error) {
+                console.error("Erro na transação de expedição:", error);
+                showError("Erro Crítico de Transação", `Não foi possível expedir o pedido. O stock não foi alterado. Detalhe: ${error.message}`);
+            } finally {
+                // Re-enable closing the modal
+                document.getElementById('modal-close-btn').onclick = originalClose;
+            }
+        };
+
+        function updateTmsHistory(docs) {
+            const tableBody = document.getElementById('tms-history-table-body');
+            if (docs.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-500">Nenhuma expedição registada.</td></tr>`;
+                return;
+            }
+            tableBody.innerHTML = docs.map(doc => {
+                const order = doc.data();
+                return `<tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-medium">${order.orderId}</td>
+                    <td class="p-3">${order.customer}</td>
+                    <td class="p-3">${order.shippingCarrier || 'N/A'}</td>
+                    <td class="p-3">€${(order.shippingCost || 0).toFixed(2)}</td>
+                    <td class="p-3 font-mono text-sm">${order.trackingNumber || 'N/A'}</td>
+                    <td class="p-3 text-xs">${order.shippedAt?.toDate().toLocaleDateString('pt-PT') || ''}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateAverageShippingCostKpi(shippedDocs) {
+            const kpiElement = document.getElementById('kpi-avg-shipping-cost');
+            if (shippedDocs.length === 0) {
+                kpiElement.textContent = 'N/A';
+                return;
+            }
+            const totalCost = shippedDocs.reduce((sum, doc) => sum + (doc.data().shippingCost || 0), 0);
+            const avgCost = totalCost / shippedDocs.length;
+            kpiElement.textContent = `€${avgCost.toFixed(2)}`;
+        }
+
+        // --- CYCLE COUNTING ---
+        function updateInventoryAccuracyKpi(stats) {
+            const kpiElement = document.getElementById('kpi-inventory-accuracy');
+            if (!stats || !stats.totalCountedItems || stats.totalCountedItems === 0) {
+                kpiElement.textContent = '100.00%';
+                return;
+            }
+            const accuracy = (1 - (Math.abs(stats.totalDiscrepancyItems) / stats.totalCountedItems)) * 100;
+            kpiElement.textContent = `${accuracy.toFixed(2)}%`;
+        }
+        
+        document.getElementById('create-cycle-count-btn').addEventListener('click', () => {
+             openModal('Criar Tarefa de Contagem Cíclica', `
+                 <p class="mb-4">Selecione o critério para gerar a lista de itens a serem contados.</p>
+                 <form id="create-count-form" class="space-y-4">
+                     <div>
+                         <label for="count-type" class="block text-sm font-medium text-gray-700">Tipo de Contagem</label>
+                         <select id="count-type" class="w-full p-2 border rounded mt-1">
+                             <option value="abc">Por Classe de Giro (ABC)</option>
+                             <option value="location">Por Localização</option>
+                         </select>
+                     </div>
+                     <div id="abc-criteria-div">
+                         <label for="abc-criteria" class="block text-sm font-medium text-gray-700">Classe ABC</label>
+                         <select id="abc-criteria" class="w-full p-2 border rounded mt-1">
+                             <option value="A">A - Alto Giro</option><option value="B">B - Médio Giro</option><option value="C">C - Baixo Giro</option>
+                         </select>
+                     </div>
+                      <div id="location-criteria-div" class="hidden">
+                         <label for="location-criteria" class="block text-sm font-medium text-gray-700">Prefixo da Localização (Ex: A-01)</label>
+                         <input type="text" id="location-criteria" placeholder="Ex: A-01, B-03..." class="w-full p-2 border rounded mt-1">
+                      </div>
+                 </form>
+             `, handleCreateCountTask, 'Gerar Tarefa');
+             
+             document.getElementById('count-type').addEventListener('change', (e) => {
+                 document.getElementById('abc-criteria-div').classList.toggle('hidden', e.target.value !== 'abc');
+                 document.getElementById('location-criteria-div').classList.toggle('hidden', e.target.value !== 'location');
+             });
+        });
+
+        async function handleCreateCountTask() {
+            disableModalConfirmButton('A gerar...');
+            try {
+                const type = document.getElementById('count-type').value;
+                let criteria, itemsToCount = [];
+                const snapshot = await getDocs(inventoryCol);
+                const allItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                if (type === 'abc') {
+                    criteria = document.getElementById('abc-criteria').value;
+                    itemsToCount = allItems.filter(item => getAbcClass(item.salesCount || 0).class === criteria);
+                } else {
+                    criteria = document.getElementById('location-criteria').value.trim().toUpperCase();
+                    if (!criteria) { 
+                        showError("Erro de Validação", "Por favor, insira um prefixo de localização.");
+                        return; 
+                    }
+                    itemsToCount = allItems.filter(item => item.location && item.location.startsWith(criteria));
+                }
+
+                if (itemsToCount.length === 0) { 
+                    showError("Nenhum Item", `Nenhum item encontrado para o critério: ${criteria}`);
+                    return; 
+                }
+
+                const taskItems = itemsToCount.map(item => ({ sku: item.sku, location: item.location, systemQty: item.quantity, countedQty: null, status: 'Pendente' }));
+                await addDoc(cycleCountTasksCol, {
+                    type, criteria, status: 'Pendente', createdAt: serverTimestamp(), items: taskItems
+                });
+                await logActivity(`Tarefa de contagem criada: ${type} - ${criteria}`);
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao criar tarefa de contagem:", error);
+                showError("Erro", "Não foi possível criar a tarefa de contagem.");
+            } finally {
+                enableModalConfirmButton('Gerar Tarefa');
+            }
+        }
+
+        function updateCycleCountTasksList(docs) {
+            const listDiv = document.getElementById('cycle-count-tasks-list');
+            if (docs.length === 0) {
+                listDiv.innerHTML = `<p class="text-gray-500">Nenhuma tarefa de contagem ativa.</p>`;
+                return;
+            }
+
+            listDiv.innerHTML = docs.map(doc => {
+                const task = doc.data();
+                const statusColors = {
+                    'Pendente': 'bg-gray-200 text-gray-800', 'Atribuída': 'bg-blue-200 text-blue-800',
+                    'Aguardando Aprovação': 'bg-yellow-200 text-yellow-800', 'Concluída': 'bg-green-200 text-green-800'
+                };
+                let actions = '';
+                if(task.status === 'Pendente') {
+                    actions = `<button onclick="window.assignCycleCountTask('${doc.id}')" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">Atribuir</button>`;
+                } else if(task.status === 'Aguardando Aprovação') {
+                    actions = `<button onclick="window.reviewDiscrepancy('${doc.id}')" class="bg-yellow-500 text-white px-2 py-1 text-xs rounded hover:bg-yellow-600">Rever</button>`;
+                }
+                
+                return `<div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">Contagem: ${task.type} - ${task.criteria}</p>
+                                <p class="text-xs">Criada em: ${task.createdAt.toDate().toLocaleDateString('pt-PT')}${task.assignedToName ? ` / Atribuída a: ${task.assignedToName}`: ''}</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="status-badge ${statusColors[task.status]}">${task.status}</span>
+                                ${actions}
+                            </div>
+                        </div>`;
+            }).join('');
+        }
+
+        window.assignCycleCountTask = async (taskId) => {
+            try {
+                const opsSnapshot = await getDocs(operatorsCol);
+                if (opsSnapshot.empty) {
+                    showError("Sem Operadores", "Não há operadores para atribuir a tarefa.");
+                    return;
+                }
+                const options = opsSnapshot.docs.map(d => `<option value="${d.id}" data-name="${d.data().name}">${d.data().name}</option>`).join('');
+                openModal('Atribuir Tarefa de Contagem', `
+                    <p>Selecione o operador para esta tarefa.</p>
+                    <select id="operator-select-count" class="w-full p-2 border rounded mt-2">${options}</select>
+                `, () => handleAssignCycleCountTask(taskId), 'Atribuir');
+            } catch (error) {
+                console.error("Erro ao carregar operadores:", error);
+                showError("Erro", "Não foi possível carregar a lista de operadores.");
+            }
+        };
+
+        async function handleAssignCycleCountTask(taskId) {
+            disableModalConfirmButton('A atribuir...');
+            try {
+                const select = document.getElementById('operator-select-count');
+                const operatorId = select.value;
+                const operatorName = select.options[select.selectedIndex].dataset.name;
+                await updateDoc(doc(db, 'cycleCountTasks', taskId), {
+                    status: 'Atribuída',
+                    assignedToId: operatorId,
+                    assignedToName: operatorName
+                });
+                await logActivity(`Tarefa de contagem ${taskId.substring(0,5)}... atribuída a ${operatorName}.`);
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao atribuir tarefa:", error);
+                showError("Erro", "Não foi possível atribuir a tarefa de contagem.");
+            } finally {
+                enableModalConfirmButton('Atribuir');
+            }
+        }
+
+        window.startCountingTask = async (taskId) => {
+            try {
+                const taskDoc = await getDoc(doc(db, 'cycleCountTasks', taskId));
+                if (!taskDoc.exists()) {
+                    showError("Erro", "Tarefa de contagem não encontrada.");
+                    return;
+                }
+                const task = taskDoc.data();
+                const sortedItems = [...task.items].sort((a, b) => a.location.localeCompare(b.location));
+                
+                const listHtml = sortedItems.map((item, index) => `
+                    <div class="p-3 border-b grid grid-cols-3 items-center">
+                        <div><i class="fa-solid fa-location-dot mr-2"></i><strong>${item.location}</strong><p class="text-xs text-gray-500">${item.sku}</p></div>
+                        <div class="text-center text-gray-600">Qtd. no Sistema: <span class="font-bold">${item.systemQty}</span></div>
+                        <input type="number" data-index="${index}" class="counted-qty-input w-full p-2 border rounded text-right" placeholder="Contagem" min="0">
+                    </div>
+                `).join('');
+
+                openModal(`Contagem Cíclica: ${task.criteria}`, `
+                    <p class="mb-4">Realize a contagem física (cega) para cada item e insira a quantidade no campo correspondente.</p>
+                    <div class="space-y-2 max-h-80 overflow-y-auto">${listHtml}</div>
+                `, () => submitCount(taskId, sortedItems), 'Submeter Contagem');
+            } catch (error) {
+                console.error("Erro ao iniciar contagem:", error);
+                showError("Erro", "Não foi possível carregar os itens para contagem.");
+            }
+        };
+
+        async function submitCount(taskId, originalItems) {
+            disableModalConfirmButton('A submeter...');
+            try {
+                const inputs = document.querySelectorAll('.counted-qty-input');
+                let hasDiscrepancy = false;
+                const updatedItems = originalItems.map((item, index) => {
+                    const countedQty = inputs[index].value === '' ? null : parseInt(inputs[index].value, 10);
+                    if (countedQty !== null && countedQty < 0) {
+                        throw new Error(`Quantidade contada para ${item.sku} não pode ser negativa.`);
+                    }
+                    if (countedQty !== null && countedQty !== item.systemQty) {
+                        hasDiscrepancy = true;
+                    }
+                    return { ...item, countedQty, status: countedQty !== null ? 'Contado' : 'Pendente' };
+                });
+
+                const newStatus = hasDiscrepancy ? 'Aguardando Aprovação' : 'Concluída';
+                await updateDoc(doc(db, 'cycleCountTasks', taskId), {
+                    items: updatedItems,
+                    status: newStatus
+                });
+                await logActivity(`Contagem para tarefa ${taskId.substring(0,5)}... submetida.`);
+                closeModal();
+            } catch (error) {
+                console.error("Erro ao submeter contagem:", error);
+                showError("Erro", error.message || "Não foi possível submeter a contagem.");
+            } finally {
+                enableModalConfirmButton('Submeter Contagem');
+            }
+        }
+
+        window.reviewDiscrepancy = async (taskId) => {
+            try {
+                const taskDoc = await getDoc(doc(db, 'cycleCountTasks', taskId));
+                if (!taskDoc.exists()) {
+                    showError("Erro", "Tarefa não encontrada.");
+                    return;
+                }
+                const task = taskDoc.data();
+                const discrepancies = task.items.filter(i => i.status !== 'Ajustado' && i.countedQty !== null && i.countedQty !== i.systemQty);
+
+                if (discrepancies.length === 0) {
+                    await updateDoc(doc(db, 'cycleCountTasks', taskId), { status: 'Concluída'});
+                    closeModal();
+                    return;
+                }
+
+                const listHtml = discrepancies.map(item => `
+                    <tr class="border-b">
+                        <td class="p-2">${item.sku}</td>
+                        <td class="p-2 text-center">${item.systemQty}</td>
+                        <td class="p-2 text-center text-red-600 font-bold">${item.countedQty}</td>
+                        <td class="p-2 text-center">${item.countedQty - item.systemQty}</td>
+                        <td class="p-2 text-right">
+                            <button onclick="window.approveAdjustment('${taskId}', '${item.sku}', ${item.countedQty})" class="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600">Aprovar Ajuste</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                openModal('Rever Discrepâncias', `
+                    <p class="mb-4">Foram encontradas as seguintes divergências. Aprove os ajustes para atualizar o stock.</p>
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-100"><tr><th class="p-2">SKU</th><th class="p-2 text-center">Sistema</th><th class="p-2 text-center">Contado</th><th class="p-2 text-center">Dif.</th><th class="p-2"></th></tr></thead>
+                        <tbody>${listHtml}</tbody>
+                    </table>
+                     <div class="mt-4 text-right">
+                         <button onclick="window.closeTaskWithoutAdjustment('${taskId}')" class="bg-gray-500 text-white px-3 py-1 text-sm rounded hover:bg-gray-600">Fechar Tarefa Sem Ajustar</button>
+                     </div>
+                `, null, '', true); // No default buttons
+            } catch (error) {
+                console.error("Erro ao rever discrepâncias:", error);
+                showError("Erro", "Não foi possível carregar as discrepâncias.");
+            }
+        };
+        
+        window.approveAdjustment = async (taskId, sku, countedQty) => {
+            try {
+                const taskRef = doc(db, 'cycleCountTasks', taskId);
+                await runTransaction(db, async (transaction) => {
+                    const taskDoc = await transaction.get(taskRef);
+                    if (!taskDoc.exists()) { throw new Error("Tarefa não encontrada."); }
+                    const task = taskDoc.data();
+                    const itemToAdjust = task.items.find(i => i.sku === sku);
+                    if (!itemToAdjust) { throw new Error("Item a ajustar não encontrado na tarefa."); }
+
+                    const invRef = doc(db, 'inventory', sku);
+                    transaction.update(invRef, { quantity: countedQty });
+
+                    const updatedItems = task.items.map(i => i.sku === sku ? { ...i, status: 'Ajustado' } : i);
+                    const remainingDiscrepancies = updatedItems.filter(i => i.status !== 'Ajustado' && i.countedQty !== null && i.countedQty !== i.systemQty);
+                    
+                    transaction.update(taskRef, {
+                        items: updatedItems,
+                        status: remainingDiscrepancies.length === 0 ? 'Concluída' : task.status
+                    });
+
+                    const statsDoc = await transaction.get(inventoryStatsRef);
+                    const stats = statsDoc.data() || { totalCountedItems: 0, totalDiscrepancyItems: 0 };
+                    transaction.set(inventoryStatsRef, {
+                        totalCountedItems: (stats.totalCountedItems || 0) + itemToAdjust.systemQty,
+                        totalDiscrepancyItems: (stats.totalDiscrepancyItems || 0) + (countedQty - itemToAdjust.systemQty)
+                    }, { merge: true });
+                });
+
+                await logActivity(`Ajuste de stock para ${sku} aprovado. Nova Qtd: ${countedQty}.`);
+                reviewDiscrepancy(taskId); // Refresh the modal
+            } catch (error) {
+                console.error("Erro ao aprovar ajuste:", error);
+                showError("Erro de Transação", `Não foi possível aprovar o ajuste. Detalhe: ${error.message}`);
+            }
+        };
+        
+        window.closeTaskWithoutAdjustment = async (taskId) => {
+            try {
+                 await updateDoc(doc(db, 'cycleCountTasks', taskId), { status: 'Concluída' });
+                 await logActivity(`Tarefa de contagem ${taskId.substring(0,5)}... fechada sem ajustes.`);
+                 closeModal();
+            } catch (error) {
+                console.error("Erro ao fechar tarefa:", error);
+                showError("Erro", "Não foi possível fechar a tarefa.");
+            }
+        }
+
+        // --- REPORTS ---
+        async function generateReports() {
+            try {
+                document.getElementById('reports-last-updated').textContent = `Atualizado em: ${new Date().toLocaleString('pt-PT')}`;
+
+                // Operator Performance
+                const perfSnapshot = await getDocs(performanceLogCol);
+                const performanceByOperator = perfSnapshot.docs.reduce((acc, doc) => {
+                    const log = doc.data();
+                    if (!acc[log.operatorName]) {
+                        acc[log.operatorName] = { tasks: 0, totalDuration: 0 };
+                    }
+                    acc[log.operatorName].tasks++;
+                    acc[log.operatorName].totalDuration += log.duration;
+                    return acc;
+                }, {});
+
+                const perfReportDiv = document.getElementById('operator-performance-report');
+                const perfData = Object.entries(performanceByOperator);
+                if(perfData.length === 0) {
+                     perfReportDiv.innerHTML = `<p class="text-gray-500">Nenhum dado de performance registado.</p>`;
+                } else {
+                     perfReportDiv.innerHTML = `
+                         <table class="w-full text-left">
+                             <thead class="bg-gray-100"><tr><th class="p-3">Operador</th><th class="p-3 text-center">Tarefas Concluídas</th><th class="p-3 text-center">Tempo Médio/Tarefa</th></tr></thead>
+                             <tbody>${perfData.map(([name, data]) => `
+                                 <tr class="border-b">
+                                     <td class="p-3 font-medium">${name}</td>
+                                     <td class="p-3 text-center">${data.tasks}</td>
+                                     <td class="p-3 text-center font-semibold">${formatDuration(data.totalDuration / data.tasks)}</td>
+                                 </tr>
+                             `).join('')}</tbody>
+                         </table>`;
+                }
+
+                // Inventory ABC Analysis
+                const invSnapshot = await getDocs(inventoryCol);
+                const abcCounts = invSnapshot.docs.reduce((acc, doc) => {
+                    const abcClass = getAbcClass(doc.data().salesCount || 0).class;
+                    acc[abcClass] = (acc[abcClass] || 0) + 1;
+                    return acc;
+                }, { A: 0, B: 0, C: 0 });
+                
+                const totalItems = invSnapshot.size;
+                const analysisDiv = document.getElementById('inventory-abc-analysis');
+                if(totalItems === 0) {
+                    analysisDiv.innerHTML = `<p class="text-gray-500">Nenhum item em inventário para analisar.</p>`;
+                } else {
+                    analysisDiv.innerHTML = Object.entries(abcCounts).map(([cls, count]) => {
+                        const percentage = totalItems > 0 ? (count / totalItems) * 100 : 0;
+                        return `<div>
+                                    <div class="flex justify-between mb-1"><span class="font-bold">Classe ${cls}</span><span class="text-sm text-gray-600">${count} SKUs</span></div>
+                                    <div class="w-full bg-gray-200 rounded-full h-4"><div class="bar-chart-bar bg-indigo-600 h-4 rounded-full" style="width: ${percentage.toFixed(2)}%"></div></div>
+                                </div>`;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error("Erro ao gerar relatórios:", error);
+                document.getElementById('operator-performance-report').innerHTML = `<p class="text-red-500">Falha ao gerar relatório de performance.</p>`;
+                document.getElementById('inventory-abc-analysis').innerHTML = `<p class="text-red-500">Falha ao gerar análise de inventário.</p>`;
+            }
+        }
+        
+        // --- MY TASKS ---
+        function updateMyTasks(orderDocs, allCountDocs) {
+            if (!currentOperator) return;
+
+            const myTasksList = document.getElementById('my-tasks-list');
+            
+            const pickingTasks = orderDocs
+                .filter(doc => doc.data().assignedTo === currentOperator.id && ['Em Separação', 'Embalado'].includes(doc.data().status))
+                .map(doc => ({ id: doc.id, data: doc.data(), type: 'picking' }));
+            
+            const countingTasks = allCountDocs
+                .filter(doc => doc.data().assignedToId === currentOperator.id && doc.data().status === 'Atribuída')
+                .map(doc => ({ id: doc.id, data: doc.data(), type: 'counting' }));
+
+            const allTasks = [...pickingTasks, ...countingTasks];
+
+            if (allTasks.length === 0) {
+                 myTasksList.innerHTML = `<p class="text-gray-500 bg-white p-6 rounded-lg shadow-md">Nenhuma tarefa atribuída a si de momento.</p>`;
+                 return;
+            }
+
+            myTasksList.innerHTML = allTasks.map(task => {
+                if (task.type === 'picking') {
+                    const isPacking = task.data.status === 'Embalado';
+                    return `<div class="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+                        <div><p class="font-bold text-lg">${task.data.orderId}</p><p class="text-sm ${isPacking ? 'text-blue-600' : 'text-yellow-600'}">Tarefa de ${isPacking ? 'Embalagem' : 'Separação'}</p></div>
+                        <button onclick="window.${isPacking ? 'startPacking' : 'startPickingTask'}('${task.id}')" class="bg-green-600 text-white p-2 rounded hover:bg-green-700">${isPacking ? 'Iniciar Embalagem' : 'Iniciar Separação'}</button>
+                    </div>`;
+                } else { // counting task
+                     return `<div class="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+                        <div><p class="font-bold text-lg">Contagem: ${task.data.criteria}</p><p class="text-sm text-purple-600">Tarefa de Contagem Cíclica</p></div>
+                        <button onclick="window.startCountingTask('${task.id}')" class="bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Iniciar</button>
+                    </div>`;
+                }
+            }).join('');
+        }
+
+        // --- UTILS & MODAL ---
+        function formatDuration(seconds) {
+            if (seconds < 60) return `${Math.round(seconds)}s`;
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.round(seconds % 60);
+            return `${minutes}m ${remainingSeconds}s`;
+        }
+        
+        function openModal(title, content, onConfirm, confirmText = 'Confirmar', hideDefaultButtons = false) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = content;
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            const footer = document.getElementById('modal-footer');
+            
+            if (hideDefaultButtons) {
+                footer.style.display = 'none';
+            } else {
+                footer.style.display = 'block';
+            }
+            
+            cancelBtn.style.display = 'inline-block';
+            if (onConfirm) {
+                confirmBtn.style.display = 'inline-block';
+                confirmBtn.textContent = confirmText;
+                enableModalConfirmButton(confirmText); // Reset button state
+                confirmCallback = onConfirm;
+                confirmBtn.onclick = () => confirmCallback();
+            } else {
+                confirmBtn.style.display = 'none';
+            }
+            
+            document.getElementById('modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal').classList.remove('opacity-0'), 10);
+            setTimeout(() => document.querySelector('.modal-content').classList.remove('scale-95'), 10);
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('opacity-0');
+            document.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => document.getElementById('modal').classList.add('hidden'), 250);
+        }
+
+        function showError(title, message) {
+            const errorContent = `<div class="text-center">
+                <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+                <p class="text-gray-700">${message}</p>
+            </div>`;
+            openModal(title, errorContent, closeModal, 'Fechar');
+        }
+
+        function disableModalConfirmButton(text = 'Aguarde...') {
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${text}`;
+            }
+        }
+
+        function enableModalConfirmButton(originalText = 'Confirmar') {
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalText;
+            }
+        }
+
+        document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+        document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+
+        // --- INITIALIZATION ---
+        loadOperators();
+    </script>
+</body>
+</html>
