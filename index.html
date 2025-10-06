@@ -1641,6 +1641,14 @@
             openModal(title, errorContent, closeModal, 'Fechar');
         }
 
+        function showLoadingModal(message) {
+            const content = `<div class="text-center p-4">
+                <i class="fas fa-spinner fa-spin text-4xl text-indigo-600 mb-4"></i>
+                <p>${message}</p>
+            </div>`;
+            openModal('Aguarde...', content, null, '', true); // hide default buttons
+        }
+
         function disableModalConfirmButton(text = 'Aguarde...') {
             const confirmBtn = document.getElementById('modal-confirm-btn');
             if (confirmBtn) {
@@ -1665,5 +1673,6 @@
     </script>
 </body>
 </html>
+
 
 
