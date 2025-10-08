@@ -1538,7 +1538,7 @@
         };
 
 
-        // --- UTILS & MODAL ---
+        // --- UTILS & MODAL (REFORMULADO) ---
         function formatDuration(seconds) {
             if (seconds < 60) return `${Math.round(seconds)}s`;
             const minutes = Math.floor(seconds / 60);
@@ -1552,28 +1552,24 @@
             const confirmBtn = document.getElementById('modal-confirm-btn');
             const cancelBtn = document.getElementById('modal-cancel-btn');
             
+            // Reset button state
+            confirmBtn.disabled = false;
+            
             confirmBtn.classList.toggle('bg-red-600', isDestructive);
             confirmBtn.classList.toggle('hover:bg-red-700', isDestructive);
             confirmBtn.classList.toggle('bg-indigo-600', !isDestructive);
             confirmBtn.classList.toggle('hover:bg-indigo-700', !isDestructive);
             
             cancelBtn.style.display = 'inline-block';
+            
+            confirmCallback = onConfirm; // Store the callback
+
             if (onConfirm) {
                 confirmBtn.style.display = 'inline-block';
                 confirmBtn.textContent = confirmText;
-                
-                // Remove o listener antigo para evitar múltiplos cliques
-                const newConfirmBtn = confirmBtn.cloneNode(true);
-                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-                
-                newConfirmBtn.addEventListener('click', () => {
-                    newConfirmBtn.disabled = true;
-                    onConfirm();
-                });
-
             } else {
                 confirmBtn.style.display = 'none';
-                if(confirmText === null) { // Usado para modais de apenas informação sem botões
+                if(confirmText === null) {
                     cancelBtn.style.display = 'none';
                 }
             }
@@ -1587,6 +1583,11 @@
             document.getElementById('modal').classList.add('opacity-0');
             document.querySelector('.modal-content').classList.add('scale-95');
             setTimeout(() => document.getElementById('modal').classList.add('hidden'), 250);
+            confirmCallback = null; // Clear callback on close
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+            }
         }
         
         function showLoadingModal(message) {
@@ -1599,6 +1600,26 @@
 
         document.getElementById('modal-close-btn').addEventListener('click', closeModal);
         document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+
+        // NOVO: Listener único para o botão de confirmação da modal
+        document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+            if (confirmCallback) {
+                const btn = document.getElementById('modal-confirm-btn');
+                btn.disabled = true;
+                const originalText = btn.textContent;
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+                
+                // Executa o callback e depois restaura o botão
+                Promise.resolve(confirmCallback()).finally(() => {
+                    // O callback pode chamar closeModal, que já reativa o botão.
+                    // Mas caso não chame (ex: em caso de erro), garantimos aqui.
+                     if (!document.getElementById('modal').classList.contains('hidden')) {
+                         btn.disabled = false;
+                         btn.innerHTML = originalText;
+                     }
+                });
+            }
+        });
 
         // --- INICIALIZAÇÃO E PRIMEIRO ARRANQUE ---
         async function criarPrimeiroGestor() {
@@ -1624,8 +1645,8 @@
             // INSTRUÇÃO IMPORTANTE: Para criar o primeiro utilizador administrador:
             // 1. Remova os '//' da linha abaixo.
             // 2. Recarregue a página uma vez. O utilizador será criado.
-            // 3. Adicione os '//' de volta na linha para não criar o utilizador novamente.
-            // ========================================================================
+        // 3. Adicione os '//' de volta na linha para não criar o utilizador novamente.
+        // ========================================================================
              //criarPrimeiroGestor();
         }
 
@@ -1675,8 +1696,9 @@
         function updateInventoryAccuracyKpi(stats) { /* ...código mantido... */ }
         
         // --- RELATÓRIOS (não modificado) ---
-        //async function generateReports() { /* ...código mantido... */ }
+        async function generateReports() { /* ...código mantido... */ }
 
     </script>
 </body>
 </html>
+
